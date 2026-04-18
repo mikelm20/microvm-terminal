@@ -1,0 +1,136 @@
+# Modulo 2, Tu primera conversacion. Version ES.
+#
+# Esta es la primera leccion que ve un usuario sin cuenta tras pulsar
+# "Empezar gratis" en la landing. La conversacion con Claude es CONTINUA
+# durante los cuatro pasos: el sandbox, el proceso claude y el chat
+# se mantienen vivos entre pasos consecutivos.
+#
+# Predicados que necesita el control plane para validar esta leccion
+# (algunos hoy son TODO, ver lessons/hello-claude.yml):
+#   - agent_online                                    (ya implementado)
+#   - process_started:        { name: claude }        (ya implementado)
+#   - claude_prompt_sent:     { match_regex: "..." }  (TODO, requiere claude-wrap)
+#   - claude_tool_call:       { tool: Read }          (TODO, requiere claude-wrap)
+#
+# Mientras claude-wrap no exista, el frontend puede caer al heuristico:
+# botones "He copiado el prompt" / "Lo he enviado" para avanzar manualmente,
+# pero la version canonica del YAML asume validacion real.
+
+id: m2-primera-conversacion
+module_number: 2
+language: es
+title: Tu primera conversacion
+subtitle: Hablar a Claude con contexto, objetivo y tono
+description: >
+  Romper el hielo con Claude Code y tener una primera victoria
+  en menos de diez minutos. La conversacion entera transcurre sobre
+  el sandbox compartido "Empresa Prueba", una empresa ficticia con
+  ocho departamentos en ~/empresa-prueba.
+estimated_minutes: 7
+sandbox: empresa-prueba
+mental_model: >
+  No hables con Claude como con un buscador. Hablale como a un
+  becario listo que acaba de entrar. Contexto, objetivo, tono.
+
+# Estado inicial del entorno antes de que arranque el primer paso.
+# El control plane garantiza esto en el guest antes de mostrar la leccion.
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true   # claude ya iniciado, prompt en blanco esperando
+
+steps:
+
+  - id: leer-departamento
+    title: Pidele a Claude que lea un departamento
+    body: >
+      Claude Code esta delante de ti, ya abierto en la carpeta de
+      Empresa Prueba. Primer truco: cuando le pides algo, dile
+      DONDE mirar y QUE quieres como respuesta. Aqui le pides que
+      lea la carpeta 01-ventas y te responda en tres frases.
+    prompt: |
+      Lee la carpeta 01-ventas y dime en tres frases que hace
+      este departamento.
+    hint: >
+      Truco: "tres frases" es un objetivo claro. Sin esa pista,
+      Claude te puede soltar dos parrafos. Con ella, te ajusta.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "01-ventas"
+    success_title: "¡Bien! Claude ha leido el departamento"
+    success_sub: "Ganas 10 XP. Sigue con el paso 2 para aprender a corregirle."
+
+  - id: corregir-sobre-la-marcha
+    title: Ahora pide que sea mas corto
+    body: >
+      Si la respuesta es larga o el tono no te convence, no hace
+      falta empezar de cero. Se lo dices y lo ajusta sobre la
+      misma conversacion.
+    prompt: |
+      demasiado largo, hazlo en dos frases y con tono informal
+    hint: >
+      Truco: cuanto mas especifica sea la correccion, mejor.
+      "Mas corto" funciona. "Dos frases, tono informal,
+      sin listas" funciona todavia mejor.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(dos\\s+frases|mas\\s+corto|informal)"
+    success_title: "¡Bien! Le has corregido sin reiniciar"
+    success_sub: "Ganas 10 XP. Sigue con el paso 3 para pedir algo mas ambicioso."
+
+  - id: pedir-algo-ambicioso
+    title: Pidele algo mas ambicioso
+    body: >
+      Claude no es solo para preguntas cortas. Pidele un
+      entregable real: un resumen de una pagina del estado del
+      departamento. Vas a ver como abre varios archivos
+      seguidos para componer la respuesta.
+    prompt: |
+      preparame un resumen de una pagina del estado del
+      departamento de ventas. Pipeline, prioridades del trimestre
+      y dos riesgos.
+    hint: >
+      Truco: cuando pides algo grande, di que estructura quieres.
+      "Pipeline, prioridades, riesgos" le da el esqueleto y
+      evita que se invente uno.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(resumen|estado).{0,40}(ventas|departamento)"
+    success_title: "¡Bien! Has pedido un entregable de verdad"
+    success_sub: "Ganas 10 XP. Ultimo paso: ver que pasa cuando le falta info."
+
+  - id: pregunta-sin-datos
+    title: Pidele algo que NO puede saber
+    body: >
+      Una de las cosas mas valiosas de Claude Code es que cuando
+      no tiene los datos, te lo dice. No inventa. Vamos a
+      provocar ese caso a proposito para que lo veas.
+    prompt: |
+      cuantos clientes tenemos en Madrid?
+    hint: >
+      Truco: si Claude responde con un numero inventado,
+      paralo y pidele "no inventes, dime que te falta para
+      saberlo". Asi entrenas el habito de no aceptar datos
+      sin fuente.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(cuantos|clientes).{0,40}madrid"
+    success_title: "¡Bien! Acabas de aprender a fiarte de Claude"
+    success_sub: "Ganas 10 XP. Has terminado tu primera conversacion."
+
+# Qué se muestra al cerrar la leccion (mock-fin del modulo, no del curso).
+# Para el modulo 2 dispara el muro de registro porque es la primera leccion
+# que completa un usuario sin cuenta.
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Hablar a Claude con contexto, objetivo y tono.
+    - Corregir sobre la marcha sin empezar de cero.
+    - Claude te avisa cuando no tiene datos, no inventa.
+  next_module: m3-organizar-cabeza
+  trigger_signup: true   # primera leccion, dispara el muro de registro

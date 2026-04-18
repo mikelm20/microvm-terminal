@@ -1,0 +1,41 @@
+# Secrets (never commit)
+*.pem
+*.key
+claude-oauth-token
+.env
+.env.*
+!.env.example
+
+# Go
+/control-plane/bin/
+/guest-agent/bin/
+*.test
+coverage.out
+coverage.html
+
+# Node / Next.js
+/web/node_modules/
+/web/.next/
+/web/out/
+/web/.env*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VM image build artifacts (large, reproducible)
+/vm-image/build/
+/vm-image/out/
+*.ext4
+*.img
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# Terraform (should never live here, but guard anyway)
+*.tfstate
+*.tfstate.*
+.terraform/

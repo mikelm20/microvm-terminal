@@ -1,0 +1,130 @@
+# Module 3, Organize your head. EN version.
+#
+# The user sets up the folder structure and the memory file so
+# Claude Code knows who they are without being told every time.
+# Conversation stays continuous on the same Empresa Prueba sandbox;
+# the files created here persist across modules 4-8.
+#
+# Predicates needed:
+#   - claude_tool_call: { tool: Bash, command_regex: "mkdir.*mi-trabajo" }
+#   - file_exists:      { path: "/home/learner/empresa-prueba/mi-trabajo/CLAUDE.md" }
+#   - file_contents_regex: { path: ".../CLAUDE.md", match: "(?i)(empresa prueba|my name|i work)" }
+
+id: m3-organizar-cabeza
+module_number: 3
+language: en
+title: Organize your head
+subtitle: A folder for your work and a CLAUDE.md file that says who you are
+description: >
+  Create the mi-trabajo folder inside Empresa Prueba with four
+  subfolders (people, projects, companies, archive) and a CLAUDE.md
+  file at the root that Claude Code reads automatically every time
+  you open a conversation in that folder.
+estimated_minutes: 8
+sandbox: empresa-prueba
+mental_model: >
+  Claude is the new chief of staff. Before asking for anything,
+  you leave a folder of your stuff on the desk plus a sheet that
+  says "this is me". From there it works on its own.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: crear-carpeta-raiz
+    title: Create your work folder
+    body: >
+      Anything you put in here, Claude can see. Anything outside,
+      doesn't exist for it. We start with a folder called
+      mi-trabajo at the root of Empresa Prueba.
+    prompt: |
+      create a folder called mi-trabajo at the root
+    hint: >
+      Trick: asking in plain language is enough. Claude knows how
+      to translate it into a mkdir. You don't have to learn shell
+      commands.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Bash
+        command_regex: "mkdir.*mi-trabajo"
+    success_title: "Nice! You have your folder"
+    success_sub: "10 XP. Now split it into four like you split your head."
+
+  - id: subcarpetas
+    title: Create the four subfolders
+    body: >
+      People, projects, companies, archive. It's the split that
+      works for almost everyone. If you want to move things later,
+      you'll do it as you go. Don't overthink it today.
+    prompt: |
+      now create four subfolders inside: 01-personas, 02-proyectos,
+      03-empresas and 04-archivo
+    hint: >
+      Trick: numeric prefix on names. They always show up in the
+      same order and your brain gets used to it.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Bash
+        command_regex: "01-personas.*02-proyectos.*03-empresas.*04-archivo"
+    success_title: "Nice! Your structure is in place"
+    success_sub: "10 XP. Last step: give Claude your intro sheet."
+
+  - id: crear-claude-md
+    title: Give it a sheet that says who you are
+    body: >
+      A file called CLAUDE.md at the root of mi-trabajo. Claude
+      reads it automatically every time you open a conversation
+      from that folder. So you don't repeat yourself. Three
+      paragraphs is plenty, don't write a biography.
+    prompt: |
+      create a CLAUDE.md at the root of mi-trabajo. Write that I
+      work at Empresa Prueba, that I prefer short answers in
+      English with no long bullet lists, and that my priorities
+      today are closing the quarter and preparing the board
+      meeting.
+    hint: >
+      Trick: what you write today is ten lines. In a month it'll
+      be thirty. It grows with use. You don't nail it on day one.
+    xp: 10
+    success:
+      type: file_contents_regex
+      match:
+        path: /home/learner/empresa-prueba/mi-trabajo/CLAUDE.md
+        regex: "(?is)(empresa prueba|priorities|short answers)"
+    success_title: "Nice! Claude knows who you are"
+    success_sub: "10 XP. Type /memory inside Claude to see this anytime."
+
+  - id: probar-la-memoria
+    title: Check Claude actually loaded it
+    body: >
+      To verify CLAUDE.md is in use, ask for something only that
+      file can know. If it answers your priorities without you
+      saying them, you're set.
+    prompt: |
+      without opening anything, tell me my priorities for today
+    hint: >
+      Trick: the /memory command inside Claude shows you every
+      CLAUDE.md it's currently loading and where from. Useful when
+      something doesn't add up.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)priorities"
+    success_title: "Nice! Your head is now outside your head"
+    success_sub: "10 XP. Module 3 closed."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - One root folder for your work, four clear subfolders.
+    - CLAUDE.md at the root, Claude reads it automatically.
+    - /memory shows you what's loaded right now.
+    - The file grows with use. You don't nail it on day one.
+  next_module: m4-dia-a-dia
+  trigger_signup: false

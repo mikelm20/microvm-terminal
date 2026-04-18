@@ -1,0 +1,6 @@
+out/
+*.ext4
+*.img
+vmlinux*
+.git
+# Don't ignore learn-guest-agent: it must be in the build context

@@ -1,0 +1,16 @@
+[Unit]
+Description=learn-platform guest agent (vsock event emitter)
+After=network-online.target multi-user.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/learn-guest-agent
+Restart=on-failure
+RestartSec=2s
+# Needs read access to /proc for the process/port watchers; runs as root for simplicity.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

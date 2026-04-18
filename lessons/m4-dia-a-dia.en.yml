@@ -1,0 +1,134 @@
+# Module 4, Day to day. EN version.
+#
+# Turn Claude Code into the first place you start the day and
+# the last one you close. The sandbox here already has a fictional
+# calendar (~/empresa-prueba/00-bandeja/) and unread emails
+# (~/empresa-prueba/00-bandeja/inbox/) so the user's prompts have
+# something concrete to read.
+#
+# Predicates:
+#   - claude_prompt_sent: regex per habit (brief, pre-meet, post-meet, close)
+#   - claude_tool_call:   { tool: Read, path_regex: "00-bandeja|01-personas" }
+
+id: m4-dia-a-dia
+module_number: 4
+language: en
+title: Day to day
+subtitle: Morning brief, pre-meeting brief, capture, close-out
+description: >
+  Four habits that change how you start and end the day. We start
+  with the first question of the morning and finish with the last
+  one of the afternoon. The whole conversation runs against
+  ~/empresa-prueba with the CLAUDE.md you left in module 3.
+estimated_minutes: 9
+sandbox: empresa-prueba
+mental_model: >
+  It's not just another app. It's your desk. Coffee, Claude, first
+  question of the day. Everything else flows through here.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+  files_present:
+    - 00-bandeja/calendario.md
+    - 00-bandeja/inbox/
+
+steps:
+
+  - id: parte-matinal
+    title: Ask for the morning brief
+    body: >
+      First question of the morning, always the same. Meetings,
+      urgent emails, what you left open yesterday. Three blocks
+      in under a minute.
+    prompt: |
+      Give me today's brief. Meetings, urgent emails, and what we
+      left open yesterday. Keep it short, three blocks.
+    hint: >
+      Trick: if you always ask in the same shape, tomorrow you
+      turn it into a skill (module 6) and the copy-paste
+      disappears.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "(00-bandeja|calendario|inbox)"
+    success_title: "Nice! You have the day on one screen"
+    success_sub: "10 XP. Now do the brief before your first meeting."
+
+  - id: brief-pre-reunion
+    title: Pre-meeting brief
+    body: >
+      Two minutes before any meeting, instant brief. Who they are,
+      last contact, open commitments, three things to cover. Your
+      sandbox has Marta as the example, in 01-personas/marta.md.
+    prompt: |
+      I have a meeting in ten minutes with Marta. Tell me what we
+      last spoke about, open commitments, and three things I
+      should cover today.
+    hint: >
+      Trick: don't ask "prep the meeting". Ask for the concrete
+      pieces. The answer comes back actionable, not a speech.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "01-personas/marta"
+    success_title: "Nice! You walk in prepped"
+    success_sub: "10 XP. What matters is what happens after, let's go."
+
+  - id: registro-post-reunion
+    title: Capture without writing
+    body: >
+      Two minutes after the meeting, you tell Claude what
+      happened in one sentence and it files in the right place.
+      You don't write notes, you talk and it saves.
+    prompt: |
+      Just spoke with Marta. I asked her for the proposal by
+      Friday, she asked me for the revised contract. File it on
+      her sheet and remind me tomorrow.
+    hint: >
+      Trick: say it in order of who owes what. "I asked for X,
+      she asked for Y." That way you never forget what you have
+      to deliver.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Edit
+        path_regex: "01-personas/marta"
+    success_title: "Nice! The meeting is captured"
+    success_sub: "10 XP. One left: close the day."
+
+  - id: cierre-del-dia
+    title: Close the day
+    body: >
+      Last question before you shut down. What did you close,
+      what did you move, what's open, plus a brief ready to open
+      first thing tomorrow.
+    prompt: |
+      Summarize the day. What I closed, what I moved, what's
+      pending. And prep tomorrow's brief for first thing.
+    hint: >
+      Trick: this summary is the input for tomorrow's morning
+      brief. Each day starts knowing where you left off, without
+      you having to remember.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(summarize|close|brief).{0,40}(day|tomorrow)"
+    success_title: "Nice! The day is closed"
+    success_sub: "10 XP. Three weeks of this and it's a habit."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Start the day with the brief. Same question every morning.
+    - Two-minute brief before every meeting.
+    - Capture immediately after, by talking, not writing.
+    - Close with what's left and tomorrow's brief already done.
+  next_module: m5-subagentes
+  milestone_screen: hito-dia7   # triggers the milestone screen from mock-hito-dia7
+  trigger_signup: false

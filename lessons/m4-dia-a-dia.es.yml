@@ -1,0 +1,135 @@
+# Modulo 4, El dia a dia. Version ES.
+#
+# Convertir Claude Code en el primer sitio donde empiezas el dia
+# y el ultimo al que vuelves antes de cerrar. Aqui el sandbox ya
+# tiene un calendario ficticio (~/empresa-prueba/00-bandeja/) y
+# emails sin leer (~/empresa-prueba/00-bandeja/inbox/) para que
+# las peticiones del usuario tengan algo concreto que leer.
+#
+# Predicados:
+#   - claude_prompt_sent: regex para cada habito (parte, brief, registro, cierre)
+#   - claude_tool_call:   { tool: Read, path_regex: "00-bandeja|01-personas" }
+
+id: m4-dia-a-dia
+module_number: 4
+language: es
+title: El dia a dia
+subtitle: Parte matinal, briefs, registro, cierre
+description: >
+  Cuatro habitos que cambian la forma de empezar y cerrar el dia.
+  Empezamos por la primera pregunta de la manana y terminamos por
+  la ultima de la tarde. La conversacion entera trabaja contra
+  ~/empresa-prueba con el CLAUDE.md que dejaste en el modulo 3.
+estimated_minutes: 9
+sandbox: empresa-prueba
+mental_model: >
+  No es una app mas. Es tu mesa de trabajo. Cafe, Claude, primera
+  pregunta del dia. Todo lo demas pasa por aqui.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+  files_present:
+    - 00-bandeja/calendario.md
+    - 00-bandeja/inbox/
+
+steps:
+
+  - id: parte-matinal
+    title: Pidele el parte del dia
+    body: >
+      Primera pregunta de la manana, siempre la misma. Reuniones,
+      emails urgentes, lo que dejaste pendiente ayer. Tres bloques
+      en menos de un minuto.
+    prompt: |
+      Dame el parte del dia. Reuniones, emails urgentes y lo que
+      dejamos pendiente ayer. Que sea breve, tres bloques.
+    hint: >
+      Truco: si lo pides siempre con la misma estructura, manana
+      lo conviertes en una skill (modulo 6) y desaparece el copy
+      paste.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "(00-bandeja|calendario|inbox)"
+    success_title: "¡Bien! Tienes el dia en una pantalla"
+    success_sub: "Ganas 10 XP. Sigue con el brief antes de tu primera reunion."
+
+  - id: brief-pre-reunion
+    title: Brief antes de una reunion
+    body: >
+      Dos minutos antes de cualquier reunion, brief instantaneo.
+      Quien es, ultimo contacto, compromisos abiertos, tres temas
+      a tocar. En tu sandbox tienes a Marta como ejemplo, en
+      01-personas/marta.md.
+    prompt: |
+      Me reuno en diez minutos con Marta. Dame lo ultimo que
+      hemos hablado, compromisos abiertos y tres cosas que
+      deberia tocar hoy.
+    hint: >
+      Truco: no le pidas "preparame la reunion". Pidele las
+      piezas concretas. Asi la respuesta es accionable, no un
+      discurso.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "01-personas/marta"
+    success_title: "¡Bien! Llegas a la reunion preparado"
+    success_sub: "Ganas 10 XP. Lo importante es lo que pasa despues, vamos."
+
+  - id: registro-post-reunion
+    title: Registra sin escribir
+    body: >
+      Dos minutos despues de la reunion, le cuentas a Claude
+      que paso en una frase y el archiva en el sitio correcto.
+      Tu no escribes notas, tu hablas y se guardan.
+    prompt: |
+      Acabo de hablar con Marta. Le pedi la propuesta para el
+      viernes, ella me pidio el contrato revisado. Archivalo en
+      su ficha y recuerdamelo manana.
+    hint: >
+      Truco: dilo en orden de quien debe que. "Le pedi X, me pidio
+      Y." Asi nunca se te olvida lo que tienes que entregar.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Edit
+        path_regex: "01-personas/marta"
+    success_title: "¡Bien! La reunion ya esta registrada"
+    success_sub: "Ganas 10 XP. Falta el cierre del dia."
+
+  - id: cierre-del-dia
+    title: Cierra el dia
+    body: >
+      Ultima pregunta antes de apagar. Que has cerrado, que has
+      movido, que esta pendiente, y un brief listo para abrir
+      manana a primera hora.
+    prompt: |
+      Resume el dia. Que he cerrado, que he movido, que queda
+      pendiente. Y prepara el brief de manana a primera hora.
+    hint: >
+      Truco: este resumen es el insumo del parte de la siguiente
+      manana. Asi cada dia arranca sabiendo donde te quedaste,
+      sin tener que recordar tu.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(resume|cierra|brief).{0,40}(dia|manana)"
+    success_title: "¡Bien! El dia esta cerrado"
+    success_sub: "Ganas 10 XP. Tres semanas haciendo esto y es rutina."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Arranca el dia con el parte. Misma pregunta cada manana.
+    - Brief de dos minutos antes de cada reunion.
+    - Registro inmediato al salir, hablando, no escribiendo.
+    - Cierre con lo que queda y el brief de manana ya preparado.
+  next_module: m5-subagentes
+  milestone_screen: hito-dia7   # dispara la pantalla de hito del mock-hito-dia7
+  trigger_signup: false

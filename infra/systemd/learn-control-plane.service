@@ -1,0 +1,34 @@
+[Unit]
+Description=learn-platform control plane (Firecracker VM lifecycle + PTY bridge)
+Documentation=https://github.com/mikelm20/learn-platform
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Must be root for: loop mount per-VM rootfs, iptables, `ip link`, Firecracker KVM.
+# Privilege reduction (jailer, seccomp, dedicated service user) is Phase 2.
+User=root
+Group=root
+
+ExecStart=/usr/local/bin/learn-control-plane -config /etc/learn-platform/config.toml
+Restart=on-failure
+RestartSec=5s
+# Drain in-flight sessions on shutdown
+TimeoutStopSec=45s
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=learn-cp
+
+# Light hardening that doesn't break Firecracker/ip/mount
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

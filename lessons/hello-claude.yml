@@ -1,0 +1,42 @@
+# Format placeholder for the wizard lesson engine. The MVP frontend evaluates
+# predicates locally (see web/components/WizardSidebar.tsx); this file defines
+# the canonical YAML shape that the control plane will parse in Phase 2+, so
+# content authors and future code can converge on it.
+#
+# Predicates the control plane MUST eventually support (mirrors the guest agent
+# event types in guest-agent/cmd/learn-guest-agent/main.go):
+#
+#   - agent_online
+#   - process_started:   { name: "<binary-name>" }
+#   - port_listening:    { port: <int> }
+#   - file_exists:       { path: "<abs path in VM>" }            (TODO)
+#   - file_contents_regex: { path: "...", match: "regex" }       (TODO)
+#   - claude_prompt_sent: { match_regex: "..." }                 (TODO, needs claude-wrap)
+#   - claude_tool_call:  { tool: "..." }                         (TODO, needs claude-wrap)
+
+id: hello-claude
+title: Your first Claude Code session
+description: >
+  Launch Claude Code in your sandbox, ask it to build something small,
+  run it, and open the preview. End-to-end in under five minutes.
+
+steps:
+  - id: agent-online
+    title: Sandbox is ready
+    hint: The guest agent has connected. Start typing in the terminal.
+    success:
+      type: agent_online
+
+  - id: start-claude
+    title: Start Claude Code
+    hint: Type `claude` and press Enter. Say hi, or ask it to build you a small app.
+    success:
+      type: process_started
+      match:
+        name: claude
+
+  - id: run-server
+    title: Run a dev server
+    hint: Once Claude has written something, run it. A port will open and we'll detect it.
+    success:
+      type: port_listening

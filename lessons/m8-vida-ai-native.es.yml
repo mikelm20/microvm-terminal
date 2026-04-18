@@ -1,0 +1,136 @@
+# Modulo 8, Tu vida AI-native. Version ES.
+#
+# Cierre del curso. No introduce comandos nuevos: pone en
+# perspectiva todo lo aprendido y deja al usuario con una
+# pregunta diaria que se llevara al trabajo real. Al cerrar
+# dispara la pantalla de fin (mock-fin.html), que ofrece el
+# CTA comercial "Llevarlo a mi empresa".
+#
+# Predicados (mas blandos que en otros modulos, este es de
+# reflexion mas que de tooling):
+#   - claude_prompt_sent: regex sobre las preguntas de reflexion
+#   - file_exists:        { path: "mi-trabajo/manifiesto.md" }
+
+id: m8-vida-ai-native
+module_number: 8
+language: es
+title: Tu vida AI-native
+subtitle: Cuando trabajar con Claude deja de ser novedad y pasa a ser norma
+description: >
+  Cierre del curso. Repasamos los siete modulos en clave de habito,
+  no de comando, y dejamos un manifiesto personal en mi-trabajo
+  con tres reglas que el usuario se lleva a su trabajo real.
+estimated_minutes: 7
+sandbox: empresa-prueba
+mental_model: >
+  AI-native no es usar IA. Es disenar tu trabajo asumiendo que
+  esta ahi. Igual que nadie "usa electricidad", simplemente todo
+  funciona con ella. Tu ya no usas IA, vives con ella al lado.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba/mi-trabajo
+  claude_running: true
+
+steps:
+
+  - id: balance-de-modulos
+    title: Pidele a Claude el balance de tu curso
+    body: >
+      Antes de cerrar, mira lo recorrido. Subagentes, skills, CLAUDE.md,
+      MCPs, rutina diaria. Pidele a Claude que te haga un mapa
+      de lo que tienes activo y lo que apenas usas.
+    prompt: |
+      mira mi carpeta mi-trabajo (CLAUDE.md, agents, skills, mcps)
+      y dame un mapa de lo que tengo activo, lo que uso poco y
+      lo que aun no he tocado. Honesto, sin adornar.
+    hint: >
+      Truco: este es un buen prompt para repetir cada mes y ver
+      como crece tu setup. Mas no es mejor: bien afinado lo es.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "mi-trabajo"
+    success_title: "¡Bien! Tienes el mapa de tu setup"
+    success_sub: "Ganas 10 XP. Vamos a la pregunta clave."
+
+  - id: la-pregunta-diaria
+    title: La pregunta que te vas a llevar
+    body: >
+      Cada vez que empiezas una tarea, una pregunta: "¿esto lo
+      tengo que hacer yo?". Si la respuesta es no, Claude. Si es
+      si, Claude al lado. Pidele que te la enmarque.
+    prompt: |
+      enmarca esta frase en pocas palabras como recordatorio
+      para mi escritorio: "esto lo tengo que hacer yo?". Hazla
+      memorable, sin cursilerias.
+    hint: >
+      Truco: esta pregunta vale mas que las cien skills que
+      podrias guardar. Es el cambio de chip de herramienta a
+      entorno.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(esto lo tengo|yo|recordatorio)"
+    success_title: "¡Bien! Ya tienes la pregunta"
+    success_sub: "Ganas 10 XP. Vamos a dejarla escrita."
+
+  - id: manifiesto-personal
+    title: Escribe tu manifiesto en tres reglas
+    body: >
+      Cierra con un archivo manifiesto.md en mi-trabajo. Tres
+      reglas tuyas, no de la plataforma. Que vas a hacer manana al abrir
+      el portatil. Que vas a dejar de hacer. Que decision toma
+      Claude por ti sin preguntar y cual no.
+    prompt: |
+      crea un manifiesto.md en mi-trabajo con tres reglas mias:
+      1) que voy a hacer manana al abrir el portatil,
+      2) que voy a dejar de hacer,
+      3) que decision te dejo tomar sola y cual no.
+      Hazme una primera propuesta basada en lo que has visto en
+      esta semana de curso, despues yo la edito.
+    hint: >
+      Truco: el manifiesto crece. Lo que escribes hoy en tres
+      lineas en seis meses son diez. Pero las tres primeras tienen
+      que estar antes de cerrar este modulo.
+    xp: 10
+    success:
+      type: file_exists
+      match:
+        path: /home/learner/empresa-prueba/mi-trabajo/manifiesto.md
+    success_title: "¡Bien! Manifiesto guardado"
+    success_sub: "Ganas 10 XP. Ultimo paso."
+
+  - id: cierre-y-traslado
+    title: Llevatelo a tu trabajo de verdad
+    body: >
+      El sandbox era una empresa ficticia. Lo aprendido sirve
+      tal cual en tu trabajo real: misma carpeta, mismo CLAUDE.md,
+      mismas skills, mismos subagentes. El cambio es que ya no
+      practicas, vives.
+    prompt: |
+      escribeme un email de tres parrafos a mi yo del lunes
+      siguiente, recordandole que abrir lo primero, que skill
+      lanzar y por que el sandbox era solo un ensayo.
+    hint: >
+      Truco: este es el ultimo prompt que envias en el sandbox.
+      Pegalo al lunes en tu calendario real cuando salgas de
+      aqui.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(email|lunes|monday|recordatorio)"
+    success_title: "¡Bien! Curso completado"
+    success_sub: "Ganas 10 XP. Ya dominas Claude Code. Bienvenido al otro lado."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Semana 1, fricciones. Mes 1, rutina. Trimestre, apalancamiento.
+    - "La pregunta diaria: ¿esto lo tengo que hacer yo?"
+    - El manifiesto crece, lo afinas con el uso.
+    - El sandbox era el ensayo. El siguiente lunes es el estreno.
+  next_module: null
+  course_complete: true   # dispara mock-fin.html con CTA comercial
+  trigger_signup: false

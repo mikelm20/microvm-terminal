@@ -1,0 +1,138 @@
+# Module 7, MCPs. EN version.
+#
+# Canonical command:
+#   claude mcp add <name> <launch-config>
+# Verified simple example: filesystem MCP via npx.
+# Config in .mcp.json (project) or ~/.claude/.mcp.json (user).
+#
+# IMPORTANT: in the Empresa Prueba sandbox, the only MCP that can
+# really run without real credentials is the filesystem MCP. The
+# Gmail, Drive and Calendar MCPs are NARRATIVE examples only, they
+# don't execute. The lesson states this explicitly.
+#
+# Predicates:
+#   - claude_tool_call: { tool: Bash, command_regex: "claude\\s+mcp\\s+add" }
+#   - file_exists:      { path: ".mcp.json" }
+#   - claude_slash_command: { command: "mcp" }
+
+id: m7-mcps
+module_number: 7
+language: en
+title: MCPs
+subtitle: Connect Claude to your real tools
+description: >
+  Until now Claude lived inside your folder. An MCP (Model Context
+  Protocol) is a standard plug giving it access to tools: the
+  filesystem, GitHub, Gmail, Drive, Slack. It goes from reading
+  to doing.
+estimated_minutes: 9
+sandbox: empresa-prueba
+mental_model: >
+  Without MCP, Claude says "you should send this email". With MCP,
+  it sends it. Without MCP, "you have a slot Tuesday". With MCP,
+  it books the meeting. The name doesn't matter. Think of it as
+  a universal plug.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba/mi-trabajo
+  claude_running: true
+
+steps:
+
+  - id: ver-mcps-actuales
+    title: See what MCPs you have
+    body: >
+      Like with /agents and /skills, there's a command to see the
+      state. /mcp lists the MCP servers active in this project
+      and at the user level. Today it's empty.
+    prompt: |
+      /mcp
+    hint: >
+      Trick: /mcp also lets you manage authentication for already
+      connected MCPs. Useful when something stops working.
+    xp: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: mcp
+    success_title: "Nice! Inventory done"
+    success_sub: "10 XP. Let's plug in the first one."
+
+  - id: anadir-filesystem-mcp
+    title: Connect the filesystem MCP
+    body: >
+      It's the simplest to try and needs no credentials. With it,
+      Claude can read and edit files outside ~/empresa-prueba if
+      you allow them. You add it via command line with `claude
+      mcp add`.
+    prompt: |
+      add a filesystem MCP using npx
+      @anthropic-ai/build-mcp-server-filesystem and give it
+      access to the folder ~/empresa-prueba/mi-trabajo
+    hint: >
+      Trick: the first time an MCP attempts a sensitive action,
+      Claude asks for confirmation on screen. It doesn't act
+      behind your back. You're in charge.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Bash
+        command_regex: "claude\\s+mcp\\s+add.*filesystem"
+    success_title: "Nice! First plug is in"
+    success_sub: "10 XP. Try it on the next step."
+
+  - id: usar-filesystem-mcp
+    title: Use it
+    body: >
+      Once plugged in, you don't have to do anything different in
+      your prompts. Claude detects the MCP and uses it when
+      appropriate. Ask it to list your subfolders going through
+      the MCP.
+    prompt: |
+      using the filesystem MCP, list every file in mi-trabajo
+      and tell me which ones I've modified in the last seven
+      days
+    hint: >
+      Trick: if you're not sure whether Claude is using the MCP
+      or its internal tools, ask "what tool did you use and
+      why?". It tells you.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(filesystem|mcp).{0,60}(list|files)"
+    success_title: "Nice! You ran your first action via MCP"
+    success_sub: "10 XP. Last step, important."
+
+  - id: limites-y-permiso
+    title: The MCP golden rule
+    body: >
+      The interesting MCPs (Gmail, Drive, banking) open the door
+      to sensitive actions: send emails, transfer money, delete.
+      Before any of those, Claude asks for confirmation. You're
+      in charge, it executes only what you authorize. Always.
+    prompt: >
+      explain in three sentences what would happen if I connected
+      a Gmail MCP and asked you "reply to Pedro and book the
+      meeting". What would you do and what would you ask me
+      first?
+    hint: >
+      Trick: if an MCP attempts a sensitive action without asking
+      for confirmation, that MCP is misconfigured. Remove it and
+      flag it.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(gmail|confirmation|permission|ask)"
+    success_title: "Nice! You closed the module knowing the limit"
+    success_sub: "10 XP. Module 7 closed."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - MCP = standard plug between Claude and other tools.
+    - Add with `claude mcp add <name> <config>`.
+    - Filesystem is the safe first step, no credentials.
+    - Sensitive actions ALWAYS ask for confirmation. You decide.
+  next_module: m8-vida-ai-native
+  trigger_signup: false

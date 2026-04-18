@@ -1,0 +1,139 @@
+# Modulo 6, Skills. Version ES.
+#
+# Sintaxis canonica verificada:
+#   .claude/skills/<name>/SKILL.md  con frontmatter YAML
+# Campos:
+#   - name (se convierte en /<name>)
+#   - description (Claude lo usa para auto-invocar)
+#   - disable-model-invocation (true para forzar invocacion manual)
+#   - allowed-tools (preaprobados sin pedir)
+#
+# A diferencia de un subagente, una Skill se carga SOLO cuando se
+# invoca, no cada vez. Es la receta, no el especialista.
+#
+# Predicados:
+#   - file_exists:        { path: ".claude/skills/parte-matinal/SKILL.md" }
+#   - claude_slash_command:{ command: "parte-matinal" }
+
+id: m6-skills
+module_number: 6
+language: es
+title: Skills
+subtitle: Tus atajos favoritos, guardados
+description: >
+  Si cada manana repites la misma instruccion, eso no es una
+  conversacion, es un procedimiento. Una skill es ese
+  procedimiento guardado, con un nombre corto, que Claude
+  ejecuta cuando lo invocas.
+estimated_minutes: 8
+sandbox: empresa-prueba
+mental_model: >
+  Subagente es QUIEN. Skill es COMO. El jefe de comunicacion
+  puede tener la skill "post-linkedin" y la skill "nota-prensa".
+  Mismo cerebro, recetas distintas.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba/mi-trabajo
+  claude_running: true
+
+steps:
+
+  - id: regla-tres-veces
+    title: La regla de las tres veces
+    body: >
+      Si has pedido lo mismo tres veces, es candidato a skill.
+      Si solo lo has pedido una vez, todavia no. En el modulo
+      4 ya pediste el parte matinal. Si lo vas a pedir cada dia,
+      es nuestra primera candidata.
+    prompt: |
+      mira mi ultima conversacion contigo y dime que tres
+      patrones se repiten que valdria la pena guardar como
+      skill
+    hint: >
+      Truco: deja que Claude detecte los patrones. Tu sesgo es
+      pensar que repites menos de lo que repites.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(patrones|repiten|skill)"
+    success_title: "¡Bien! Tienes candidatas"
+    success_sub: "Ganas 10 XP. Vamos a guardar la primera."
+
+  - id: crear-skill-parte-matinal
+    title: Crea la skill parte-matinal
+    body: >
+      Cada skill vive en .claude/skills/<nombre>/SKILL.md con un
+      frontmatter que dice cuando usarla y opcionalmente que
+      herramientas tiene preaprobadas. El cuerpo en markdown son
+      las instrucciones que Claude sigue paso a paso.
+    prompt: |
+      crea una skill llamada parte-matinal en .claude/skills.
+      Description: usar cada manana al abrir Claude para tener
+      el resumen del dia. Pasos: leer 00-bandeja/calendario.md,
+      leer 00-bandeja/inbox/, mirar 01-personas para pendientes
+      y devolver un brief de cuatro bullets siempre con el mismo
+      formato (reuniones, urgentes, pendientes ayer, foco hoy).
+    hint: >
+      Truco: cuanto mas concretos los pasos, mas consistente la
+      respuesta cada manana. Una skill ambigua es una conversacion
+      mas, no una receta.
+    xp: 10
+    success:
+      type: file_exists
+      match:
+        path: /home/learner/empresa-prueba/mi-trabajo/.claude/skills/parte-matinal/SKILL.md
+    success_title: "¡Bien! Tu primera skill esta guardada"
+    success_sub: "Ganas 10 XP. Pruebala con /parte-matinal."
+
+  - id: invocar-skill
+    title: Invocala
+    body: >
+      Una vez guardada, la lanzas con /<nombre>. Claude carga la
+      receta solo en ese momento (a diferencia de CLAUDE.md que
+      carga siempre) y la ejecuta. Segundos en vez de minutos.
+    prompt: |
+      /parte-matinal
+    hint: >
+      Truco: tambien podrias decir "lanzame el parte" en lenguaje
+      normal y Claude la activaria por la description. Pero
+      escribir /parte-matinal es lo mas rapido y siempre
+      funciona.
+    xp: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: parte-matinal
+    success_title: "¡Bien! Has ejecutado tu primera receta"
+    success_sub: "Ganas 10 XP. Falta una idea importante."
+
+  - id: skill-vs-subagente
+    title: Repasa la diferencia con un subagente
+    body: >
+      Skill: receta. Mismo Claude, instrucciones guardadas. Carga
+      solo cuando la invocas. Subagente: especialista. Otro
+      contexto, otra mision, otro modelo. Pidele a Claude que
+      te lo aclare en su jerga.
+    prompt: |
+      explicame en cuatro frases la diferencia entre una skill y
+      un subagente, con un ejemplo concreto del jefe-de-agenda
+      que cree ayer.
+    hint: >
+      Truco: si un dia dudas si crear skill o subagente, pregunta
+      "necesito otra cabeza o solo otra receta?". Otra cabeza es
+      subagente. Otra receta es skill.
+    xp: 10
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(skill).{0,40}(subagente|subagent)"
+    success_title: "¡Bien! Ya distingues una de la otra"
+    success_sub: "Ganas 10 XP. Modulo 6 cerrado."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Skill = receta guardada en .claude/skills/<nombre>/SKILL.md
+    - Se carga solo al invocarla, no permanente como CLAUDE.md
+    - Invocas con /<nombre> o por la description en lenguaje normal
+    - Regla de las tres veces antes de crear una.
+  next_module: m7-mcps
+  trigger_signup: false

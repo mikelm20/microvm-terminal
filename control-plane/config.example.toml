@@ -1,0 +1,22 @@
+# Example config for learn-control-plane. Install as /etc/learn-platform/config.toml.
+# Every value here is also the default, so an empty file works. Keep the file
+# itself mode 0640 so the token-file path is not readable by other users.
+
+listen_addr = "127.0.0.1:8080"
+max_concurrent = 3
+idle_timeout_seconds = 300
+
+firecracker_bin = "/usr/local/bin/firecracker"
+jailer_bin = "/usr/local/bin/jailer"
+kernel_path = "/var/lib/firecracker/images/vmlinux"
+rootfs_path = "/var/lib/firecracker/images/rootfs.ext4"
+vm_data_dir = "/var/lib/firecracker/vms"
+
+bridge_name = "fc-br0"
+vm_cidr_base = "172.20.0.0/24"
+
+# Path to a file containing the single-line output of `claude setup-token` on
+# an operator's machine. Mode 0600 on the file. Injected into each VM via
+# /etc/profile.d/99-learn.sh at boot. Replace with per-session API keys + proxy
+# before opening the platform to external learners.
+claude_oauth_token_file = "/etc/learn-platform/claude-oauth-token"

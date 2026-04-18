@@ -1,0 +1,143 @@
+# Modulo 5, Subagentes. Version ES.
+#
+# Crear un subagente real con la sintaxis canonica:
+#   .claude/agents/<name>/<name>.md  con frontmatter YAML
+# Campos verificados (claude-code-guide, 16-04-2026):
+#   - name (recomendado)
+#   - description (REQUERIDO, lo lee Claude para auto-delegar)
+#   - model (opcional)
+#   - tools (opcional, lista separada por espacios)
+#
+# El usuario tambien aprende que la invocacion no es manual: Claude
+# auto-delega cuando la tarea encaja con la description del subagente.
+#
+# Predicados:
+#   - file_exists:        { path: ".claude/agents/jefe-de-agenda/jefe-de-agenda.md" }
+#   - file_contents_regex { path: "...", match: "(?is)description:" }
+#   - claude_tool_call:   { tool: Task, subagent_type: "jefe-de-agenda" }
+
+id: m5-subagentes
+module_number: 5
+language: es
+title: Subagentes
+subtitle: Tu equipo invisible de especialistas
+description: >
+  Claude Code no tiene que hacerlo todo el. Puedes definir
+  especialistas (jefe de agenda, jefe de comunicacion, analista)
+  cada uno con su mision, su modelo y sus herramientas. Claude
+  auto-delega segun la peticion.
+estimated_minutes: 9
+sandbox: empresa-prueba
+mental_model: >
+  Claude es tu jefe de gabinete. Los subagentes son los
+  especialistas que el contrata por ti. Tu hablas con el jefe,
+  el reparte.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba/mi-trabajo
+  claude_running: true
+
+steps:
+
+  - id: ver-subagentes-vacios
+    title: Mira que subagentes tienes hoy
+    body: >
+      Antes de crear ninguno, comprueba el estado. El comando
+      /agents te abre la lista de subagentes activos en este
+      proyecto y en tu usuario. Hoy esta vacio.
+    prompt: |
+      /agents
+    hint: >
+      Truco: /agents tambien sirve para crear, editar y borrar
+      desde un menu, pero hoy lo creamos a mano para que veas
+      como funciona por dentro.
+    xp: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: agents
+    success_title: "¡Bien! Has visto que la estanteria esta vacia"
+    success_sub: "Ganas 10 XP. Vamos a fichar al primero."
+
+  - id: crear-jefe-de-agenda
+    title: Crea el jefe de agenda
+    body: >
+      Cada subagente vive en .claude/agents/<nombre>/<nombre>.md
+      con un frontmatter que dice quien es, que hace y que
+      modelo usa. Claude lee la description para decidir cuando
+      delegarle.
+    prompt: |
+      crea un subagente llamado jefe-de-agenda en .claude/agents.
+      Su mision: gestionar mi calendario, encajar reuniones sin
+      romper compromisos previos y avisarme de huecos. Usa
+      claude-haiku-4-5 (es rapido y barato para tareas de agenda)
+      y dale permisos de lectura del calendario y edicion de los
+      archivos en 01-personas.
+    hint: >
+      Truco: la description del frontmatter es la que mas pesa.
+      Cuanto mejor describa CUANDO usar este subagente, mejor
+      lo activara Claude por su cuenta.
+    xp: 10
+    success:
+      type: file_exists
+      match:
+        path: /home/learner/empresa-prueba/mi-trabajo/.claude/agents/jefe-de-agenda/jefe-de-agenda.md
+    success_title: "¡Bien! Tienes tu primer fichaje"
+    success_sub: "Ganas 10 XP. Ahora compruebalo y pruebalo."
+
+  - id: invocar-jefe-de-agenda
+    title: Pidele algo de su area sin nombrarlo
+    body: >
+      Truco real de subagentes: tu no dices "usa el jefe de
+      agenda". Le pides algo de su area en lenguaje normal y
+      Claude detecta el match con la description. Si la
+      description es buena, delega solo.
+    prompt: |
+      encajame una cena con el equipo esta semana sin pisar la
+      reunion del jueves
+    hint: >
+      Truco: si Claude no auto-delega, suele ser porque la
+      description del subagente es vaga. Vuelve al .md, especifica
+      mejor cuando se le debe llamar y reintenta.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Task
+        subagent_type: jefe-de-agenda
+    success_title: "¡Bien! Claude ha delegado al especialista"
+    success_sub: "Ganas 10 XP. Ultimo paso: la regla de cuando NO crear mas."
+
+  - id: regla-de-no-multiplicar
+    title: La regla de no multiplicarlos
+    body: >
+      Dos o tres subagentes bien afinados valen mas que diez
+      vagos. Empieza con el que mas duele no tener. Anade cuando
+      vuelvas a notar la falta. Antes de cerrar el modulo, lee
+      el .md que has creado y mejoralo.
+    prompt: |
+      relee el .md del jefe-de-agenda y proponme tres mejoras
+      para que su description sea mas precisa. No edites,
+      proponlas.
+    hint: >
+      Truco: revisar el .md es trabajo del usuario, no de Claude.
+      Pidele propuestas, decide tu, edita tu. Asi mantienes
+      control sobre quien hace que en tu equipo invisible.
+    xp: 10
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: ".claude/agents/jefe-de-agenda"
+    success_title: "¡Bien! Ya sabes hacer crecer el equipo"
+    success_sub: "Ganas 10 XP. Modulo 5 cerrado."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Subagentes viven en .claude/agents/<nombre>/<nombre>.md
+    - El campo description manda, Claude lo lee para auto-delegar.
+    - Tu no los invocas a mano, los activa la peticion.
+    - Empieza con uno, crece por necesidad. No multipliques.
+  next_module: m6-skills
+  trigger_signup: false

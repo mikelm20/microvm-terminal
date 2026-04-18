@@ -1,0 +1,29 @@
+[Unit]
+Description=learn-platform web (Next.js frontend at learn.example.com)
+Documentation=https://github.com/mikelm20/learn-platform
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=learn
+Group=learn
+WorkingDirectory=/opt/learn-platform/web
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5s
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=learn-web
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/opt/learn-platform/web
+
+[Install]
+WantedBy=multi-user.target

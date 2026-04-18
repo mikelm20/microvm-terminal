@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  background: #1a0f0a;
+  color: #f2e6d5;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
+}
+
+/* xterm container should fill whatever flex box wraps it */
+.term-wrap {
+  width: 100%;
+  height: 100%;
+  background: #0d0604;
+}
+
+.term-wrap .xterm,
+.term-wrap .xterm-viewport,
+.term-wrap .xterm-screen {
+  height: 100% !important;
+  width: 100% !important;
+}
