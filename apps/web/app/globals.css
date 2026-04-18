@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html {
+    background-color: #6e2608;
+    color: #fff6e6;
+  }
+  body {
+    background: linear-gradient(180deg, #a8391d 0%, #8f2f10 60%, #6e2608 100%);
+    min-height: 100vh;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  a {
+    color: #ffc591;
+  }
+  a:hover {
+    color: #fff6e6;
+  }
+}
+
+@layer components {
+  .learn-card {
+    background-color: #8f2f10;
+    border: 1px solid rgba(255, 246, 230, 0.12);
+    border-radius: 24px;
+    padding: 24px;
+  }
+  .learn-eyebrow {
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #ffc591;
+  }
+  .learn-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background-color: rgba(255, 246, 230, 0.08);
+    color: #fff6e6;
+    font-size: 0.8125rem;
+    letter-spacing: 0;
+  }
+  .learn-button-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 22px;
+    border-radius: 9999px;
+    background-image: linear-gradient(135deg, #ffc591 0%, #ff9b5a 50%, #e6724a 100%);
+    color: #2a1208;
+    font-weight: 500;
+    box-shadow: 0 0 0 6px rgba(255, 197, 145, 0.20), 0 14px 36px rgba(230, 114, 74, 0.45);
+    transition: transform 240ms cubic-bezier(0.20, 0.80, 0.30, 1.00);
+  }
+  .learn-button-primary:hover {
+    transform: translateY(-1px);
+    color: #2a1208;
+  }
+  .learn-button-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 18px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 246, 230, 0.24);
+    color: #fff6e6;
+    background-color: transparent;
+    transition: border-color 240ms cubic-bezier(0.20, 0.80, 0.30, 1.00);
+  }
+  .learn-button-secondary:hover {
+    border-color: #ffc591;
+    color: #fff6e6;
+  }
+}
