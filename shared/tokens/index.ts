@@ -1,2 +1,4 @@
-export { default as tokens } from "./tokens.json" with { type: "json" };
-export type Tokens = typeof import("./tokens.json");
+import tokensJson from "./tokens.json" with { type: "json" };
+
+export const tokens = tokensJson;
+export type Tokens = typeof tokensJson;

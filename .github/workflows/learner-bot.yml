@@ -1,0 +1,29 @@
+name: learner-bot
+
+# Manual-only stub. Agent-Spine fills in the real harness in
+# tests/learner-bot/. Kept out of the PR matrix because it hits a live Claude.
+
+on:
+  workflow_dispatch:
+    inputs:
+      lesson:
+        description: "Lesson id to run (e.g. m2-primera-conversacion)"
+        required: false
+        default: ""
+
+jobs:
+  learner-bot:
+    name: learner-bot (manual)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gate
+        run: |
+          if [ ! -d tests/learner-bot ]; then
+            echo "tests/learner-bot not yet landed. Nothing to do."
+            exit 0
+          fi
+          echo "Would run learner-bot against lesson: ${{ inputs.lesson }}"
+          echo "Agent-Spine: wire this up when the harness exists."

@@ -5,6 +5,7 @@ claude-oauth-token
 .env
 .env.*
 !.env.example
+!.env.local.example
 
 # Go
 /control-plane/bin/

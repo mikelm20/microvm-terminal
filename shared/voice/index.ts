@@ -1,12 +1,12 @@
 import es from "./es.json" with { type: "json" };
 import en from "./en.json" with { type: "json" };
 
-export type Voice = typeof es;
-export type Lang = "es" | "en";
+export type { Lang, Voice, VoiceKey } from "./types";
+export { t, voiceKeys } from "./types";
 
-const tables: Record<Lang, Voice> = { es, en: en as Voice };
+const tables = { es, en } as const;
 
-export function voice(lang: Lang): Voice {
+export function voice(lang: "es" | "en") {
   return tables[lang];
 }
 

@@ -42,3 +42,14 @@ Single `CLAUDE_CODE_OAUTH_TOKEN` minted via `claude setup-token` on operator mac
 - Architecture source doc: `<drive-link>`
 - DNS managed in `<private-repo>` (the `custom_records` map includes `learn`).
 - DevOps IDP (separate product): see `<private-repo>` and the DevOps `03-tech/CLAUDE.md`. This repo is **not** part of the IDP.
+
+## Monorepo conventions
+
+Source of truth for every shared boundary: `CONTRACTS.md` at the repo root. Read it before writing anything that crosses package lines. If a contract is ambiguous or missing, open a `contracts-question` issue and wait.
+
+- **Workspace**: pnpm + Turborepo. Root scripts: `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm codegen`, `pnpm format`.
+- **Local dev stack**: `make dev-up` (Postgres 16 via `infra/docker-compose.dev.yml`), `make dev-down`, `make dev-logs`, `make psql`. Credentials in `.env.local` (gitignored). Template at `.env.local.example`.
+- **Go modules**: `control-plane/`, `guest-agent/`, and the future `vm-image/claude-wrap/` and `proxy/` are independent Go modules. `make go-build` compiles every module that is present.
+- **Codegen**: TS is the single source of truth. Regenerate Go types and voice key types with `pnpm codegen` whenever `shared/api/*.ts` or `shared/voice/es.json` change. CI fails if committed generated files are stale.
+- **File ownership**: each agent writes only inside its own scope (see CONTRACTS.md section 8). Shared mutation targets (root `package.json`, `turbo.json`, `CONTRACTS.md`, this file) are owned by Agent-Tooling post-scaffold.
+- **No em dashes.** Use comma, period, or colon. Enforced by review, not tooling.

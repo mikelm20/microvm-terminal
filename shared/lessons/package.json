@@ -10,11 +10,19 @@
     "./schema": "./schema.ts",
     "./loader": "./loader.ts"
   },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist .turbo"
+  },
   "dependencies": {
     "zod": "^3.23.8",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9"
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.16.10",
+    "typescript": "^5.6.2"
   }
 }

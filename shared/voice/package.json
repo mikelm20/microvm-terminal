@@ -7,7 +7,19 @@
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts",
+    "./types": "./types.ts",
     "./es": "./es.json",
     "./en": "./en.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "build": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist .turbo",
+    "codegen": "node codegen.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "typescript": "^5.6.2"
   }
 }
