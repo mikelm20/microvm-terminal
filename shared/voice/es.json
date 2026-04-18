@@ -35,6 +35,16 @@
       "rrhh": "RRHH",
       "legal": "Legal",
       "estrategia": "Estrategia"
+    },
+    "taglines": {
+      "ventas": "Correos, propuestas, cierres.",
+      "marketing": "Campanas, copy, analisis.",
+      "tecnologia": "Codigo, revisiones, debugging.",
+      "producto": "Specs, roadmap, discovery.",
+      "finanzas": "Reportes, modelos, cuentas.",
+      "rrhh": "Procesos, politicas, gente.",
+      "legal": "Contratos, cumplimiento, riesgo.",
+      "estrategia": "Mercados, decisiones, vision."
     }
   },
   "path": {
@@ -111,7 +121,13 @@
   },
   "settings": {
     "title": "Ajustes",
+    "done": "Listo",
+    "section_account": "CUENTA",
+    "section_preferences": "PREFERENCIAS",
+    "section_data": "DATOS",
     "lang": "Idioma",
+    "lang_es": "Espanol",
+    "lang_en": "Ingles",
     "department": "Departamento",
     "haptics": "Vibraciones",
     "push": "Avisos",
