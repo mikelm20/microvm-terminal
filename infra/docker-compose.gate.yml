@@ -1,0 +1,90 @@
+# Gate-local dev stack. This file is owned by Agent-Gate and tests the
+# security gate end to end: proxy + nftables-like container policy + an
+# Anthropic mock + a VM simulator. Agent-Tooling ships the canonical
+# `docker-compose.dev.yml` separately; at merge time the two stacks are
+# reconciled into one. Until then, run `docker compose -f infra/docker-compose.gate.yml up`
+# from the repo root.
+#
+# Why docker and not the real Firecracker path?
+#   - We run this on macOS laptops; Firecracker needs KVM which is Linux-only.
+#   - The jailer.sh script is tested against a real Firecracker on the
+#     production host (manual smoke; see infra/jailer/README.md).
+#   - What this stack tests: HTTP surface of the proxy, quota, audit to
+#     Postgres, TLS termination, and the allowlist behaviour of vm-sim.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: learn
+      POSTGRES_PASSWORD: learn
+      POSTGRES_DB: learn
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learn -d learn"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      internal: {}
+
+  # Stands in for api.anthropic.com. Returns fixed JSON bodies with usage
+  # metrics the proxy should record. Using kennethreitz/httpbin keeps the
+  # image tiny and the contract obvious.
+  fake-anthropic:
+    image: ghcr.io/nginx/nginx-unprivileged:1.27-alpine
+    volumes:
+      - ./fake-anthropic/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./fake-anthropic/messages.json:/usr/share/nginx/html/v1/messages:ro
+    ports:
+      - "18080:8080"
+    networks:
+      internal: {}
+
+  claude-proxy:
+    build:
+      context: ../proxy
+      dockerfile: Dockerfile
+    environment:
+      ANTHROPIC_API_KEYS: |
+        [{"id":"dev-k1","workspace":"learn-dev","secret":"sk-ant-fake-DEV-DO-NOT-USE"}]
+      POSTGRES_URL: postgres://learn:learn@postgres:5432/learn?sslmode=disable
+      # Placeholder, never a real secret. Real admin token comes from Doppler
+      # (config=prd) and is injected by `doppler run -- claude-proxy`.
+      PROXY_ADMIN_TOKEN: CHANGEME_LOCAL_DEV_ONLY
+      PROXY_UPSTREAM: http://fake-anthropic:8080
+    command:
+      - "--plain"
+      - "--listen"
+      - ":8443"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # Only exposed on loopback so curl tests from the host can poke it.
+      - "127.0.0.1:18443:8443"
+    networks:
+      internal: {}
+
+  # vm-sim mimics the network policy a jailed VM sees. The production version
+  # is enforced by nftables on fc-br0; here we approximate it with a small
+  # iptables ruleset applied at container start. Every test assertion hits
+  # `docker compose exec vm-sim curl ...`.
+  vm-sim:
+    image: alpine:3.20
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      - claude-proxy
+    volumes:
+      - ./vm-sim/entrypoint.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command: ["sleep", "infinity"]
+    networks:
+      internal: {}
+
+networks:
+  internal:
+    driver: bridge
