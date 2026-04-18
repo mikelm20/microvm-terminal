@@ -1,0 +1,39 @@
+# Vendored / generated / out-of-scope for prettier.
+node_modules/
+dist/
+build/
+.next/
+.turbo/
+.expo/
+coverage/
+pnpm-lock.yaml
+
+# Areas owned by other agents or frozen by the scaffold.
+# Their owners run their own formatters.
+apps/
+web/
+lessons/
+vm-image/
+phase-0-spike/
+infra/bootstrap.sh
+control-plane/
+guest-agent/
+proxy/
+
+# Generated.
+shared/voice/types.ts
+control-plane/internal/apitypes/
+
+# Frozen contract surfaces.
+CONTRACTS.md
+shared/api/schemas.ts
+shared/api/events.ts
+shared/api/errors.ts
+shared/tokens/tokens.json
+shared/voice/es.json
+shared/voice/en.json
+shared/lessons/schema.ts
+
+# Prose docs: leave tables and long lines alone.
+CLAUDE.md
+README.md

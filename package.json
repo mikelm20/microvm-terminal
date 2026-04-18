@@ -10,11 +10,23 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "codegen:api": "tsx shared/api/codegen.mjs",
+    "codegen:voice": "node shared/voice/codegen.mjs",
+    "codegen": "pnpm run codegen:voice && pnpm run codegen:api",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}\""
   },
   "devDependencies": {
+    "@types/node": "^20.16.10",
+    "eslint": "^9.12.0",
+    "prettier": "^3.3.3",
+    "tsx": "^4.21.0",
     "turbo": "^2.1.3",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "typescript-eslint": "^8.8.0",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.5"
   },
   "engines": {
     "node": ">=20.0.0",
