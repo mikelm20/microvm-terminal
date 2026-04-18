@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "learn",
+    "slug": "learn",
+    "scheme": "learn",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.learn"
+    },
+    "android": {
+      "package": "com.example.learn"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
