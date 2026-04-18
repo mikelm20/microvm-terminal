@@ -39,7 +39,7 @@ export type RequestMagicLinkRequest = z.infer<typeof RequestMagicLinkRequest>;
 
 export const RequestMagicLinkResponse = z.object({
   ok: z.literal(true),
-  expires_in_seconds: z.number(),
+  expires_in_seconds: z.number().int(),
 });
 export type RequestMagicLinkResponse = z.infer<typeof RequestMagicLinkResponse>;
 
@@ -63,9 +63,9 @@ export const MeResponse = z.object({
   lang: LangSchema,
   department: DepartmentSchema.nullable(),
   name: z.string().nullable(),
-  streak_days: z.number(),
-  total_xp: z.number(),
-  grace_tokens: z.number(),
+  streak_days: z.number().int(),
+  total_xp: z.number().int(),
+  grace_tokens: z.number().int(),
   haptics_enabled: z.boolean(),
   push_enabled: z.boolean(),
   created_at: z.string(),
@@ -89,14 +89,14 @@ export type PatchMeResponse = z.infer<typeof PatchMeResponse>;
 export const ModuleProgressSchema = z.object({
   completed_steps: z.array(z.string()),
   paused_at: z.string().nullable(),
-  xp_earned: z.number(),
+  xp_earned: z.number().int(),
 });
 export type ModuleProgress = z.infer<typeof ModuleProgressSchema>;
 
 export const ProgressStateSchema = z.object({
   modules: z.record(z.string(), ModuleProgressSchema),
-  streak_days: z.number(),
-  grace_tokens: z.number(),
+  streak_days: z.number().int(),
+  grace_tokens: z.number().int(),
   last_visited: z.string(),
   seen_coachmarks: z.array(z.string()),
   updated_at: z.string(),
@@ -118,11 +118,11 @@ export type ProgressSyncResponse = z.infer<typeof ProgressSyncResponse>;
 // lessons
 export const LessonSummarySchema = z.object({
   id: z.string(),
-  module_number: z.number(),
+  module_number: z.number().int(),
   language: LangSchema,
   title: z.string(),
   subtitle: z.string().optional(),
-  estimated_minutes: z.number().optional(),
+  estimated_minutes: z.number().int().optional(),
 });
 export type LessonSummary = z.infer<typeof LessonSummarySchema>;
 
@@ -154,7 +154,7 @@ export const HeartbeatResponse = z.object({
   alive: z.boolean(),
   claude_busy: z.boolean(),
   last_event_at: z.string(),
-  age_seconds: z.number(),
+  age_seconds: z.number().int(),
 });
 export type HeartbeatResponse = z.infer<typeof HeartbeatResponse>;
 
@@ -187,8 +187,8 @@ export const PublicProfileResponse = z.object({
   name: z.string().nullable(),
   department: DepartmentSchema.nullable(),
   lang: LangSchema,
-  streak_days: z.number(),
-  total_xp: z.number(),
+  streak_days: z.number().int(),
+  total_xp: z.number().int(),
   modules_completed: z.array(z.object({
     lesson_id: z.string(),
     title: z.string(),

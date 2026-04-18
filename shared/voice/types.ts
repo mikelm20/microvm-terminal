@@ -46,6 +46,16 @@ export type Voice = {
       legal: string;
       estrategia: string;
     };
+    taglines: {
+      ventas: string;
+      marketing: string;
+      tecnologia: string;
+      producto: string;
+      finanzas: string;
+      rrhh: string;
+      legal: string;
+      estrategia: string;
+    };
   };
   path: {
     header: string;
@@ -121,7 +131,13 @@ export type Voice = {
   };
   settings: {
     title: string;
+    done: string;
+    section_account: string;
+    section_preferences: string;
+    section_data: string;
     lang: string;
+    lang_es: string;
+    lang_en: string;
     department: string;
     haptics: string;
     push: string;
@@ -248,13 +264,27 @@ export type VoiceKey =
   | "role_pick.departments.ventas"
   | "role_pick.skip"
   | "role_pick.subtitle"
+  | "role_pick.taglines.estrategia"
+  | "role_pick.taglines.finanzas"
+  | "role_pick.taglines.legal"
+  | "role_pick.taglines.marketing"
+  | "role_pick.taglines.producto"
+  | "role_pick.taglines.rrhh"
+  | "role_pick.taglines.tecnologia"
+  | "role_pick.taglines.ventas"
   | "role_pick.title"
   | "settings.data_delete"
   | "settings.data_export"
   | "settings.department"
+  | "settings.done"
   | "settings.haptics"
   | "settings.lang"
+  | "settings.lang_en"
+  | "settings.lang_es"
   | "settings.push"
+  | "settings.section_account"
+  | "settings.section_data"
+  | "settings.section_preferences"
   | "settings.sign_out"
   | "settings.title"
   | "share.body_certificate"
@@ -394,13 +424,27 @@ export const voiceKeys: readonly VoiceKey[] = [
   "role_pick.departments.ventas",
   "role_pick.skip",
   "role_pick.subtitle",
+  "role_pick.taglines.estrategia",
+  "role_pick.taglines.finanzas",
+  "role_pick.taglines.legal",
+  "role_pick.taglines.marketing",
+  "role_pick.taglines.producto",
+  "role_pick.taglines.rrhh",
+  "role_pick.taglines.tecnologia",
+  "role_pick.taglines.ventas",
   "role_pick.title",
   "settings.data_delete",
   "settings.data_export",
   "settings.department",
+  "settings.done",
   "settings.haptics",
   "settings.lang",
+  "settings.lang_en",
+  "settings.lang_es",
   "settings.push",
+  "settings.section_account",
+  "settings.section_data",
+  "settings.section_preferences",
   "settings.sign_out",
   "settings.title",
   "share.body_certificate",

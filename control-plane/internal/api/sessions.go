@@ -118,7 +118,7 @@ func (h *sessionsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, apitypes.CreateSessionResponse{
 		SessionID:          s.ID,
 		VMIP:               ipStr,
-		PtyWSURL:           wsOrigin + "/sessions/" + s.ID + "/pty",
+		PTYWSURL:           wsOrigin + "/sessions/" + s.ID + "/pty",
 		WizardWSURL:        wsOrigin + "/sessions/" + s.ID + "/ws",
 		PreviewURLTemplate: origin + "/sessions/" + s.ID + "/preview/{port}",
 	})
@@ -269,7 +269,7 @@ func (h *sessionsHandler) SubmitPrompt(w http.ResponseWriter, r *http.Request) {
 		h.deps.Logger.Info("prompt submitted", "session", row.ID, "turn", turn, "bytes", len(req.Text))
 	}
 
-	writeJSON(w, http.StatusOK, apitypes.SubmitPromptResponse{OK: true, TurnID: turn})
+	writeJSON(w, http.StatusOK, apitypes.SubmitPromptResponse{Ok: true, TurnID: turn})
 }
 
 // Attach handles POST /sessions/:id/attach (multipart).
@@ -338,7 +338,7 @@ func (h *sessionsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.deps.Store.MarkSessionReaped(r.Context(), row.ID); err != nil {
 		h.deps.Logger.Error("mark reaped", "err", err)
 	}
-	writeJSON(w, http.StatusOK, apitypes.OKResponse{OK: true})
+	writeJSON(w, http.StatusOK, apitypes.OKResponse{Ok: true})
 }
 
 // WS handles GET /sessions/:id/ws (wizard events). Replays persisted history

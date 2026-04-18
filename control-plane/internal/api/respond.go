@@ -15,7 +15,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // apiError writes an apitypes.ApiError body. The request_id is pulled from
 // the request context so clients can correlate with server logs.
-func apiError(w http.ResponseWriter, r *http.Request, status int, code apitypes.ApiErrorCode, message string) {
+func apiError(w http.ResponseWriter, r *http.Request, status int, code string, message string) {
 	writeJSON(w, status, apitypes.ApiError{
 		Code:      code,
 		Message:   message,
@@ -23,7 +23,7 @@ func apiError(w http.ResponseWriter, r *http.Request, status int, code apitypes.
 	})
 }
 
-func apiErrorRetry(w http.ResponseWriter, r *http.Request, status int, code apitypes.ApiErrorCode, message string, retryAfter int) {
+func apiErrorRetry(w http.ResponseWriter, r *http.Request, status int, code string, message string, retryAfter int) {
 	writeJSON(w, status, apitypes.ApiError{
 		Code:              code,
 		Message:           message,

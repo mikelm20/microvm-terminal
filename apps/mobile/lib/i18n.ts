@@ -5,7 +5,10 @@
 import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import { voice, type Lang, type Voice } from "@learn/shared-voice";
+import { voice, t, type Lang, type Voice, type VoiceKey } from "@learn/shared-voice";
+
+export { t };
+export type { Lang, VoiceKey };
 
 const LANG_KEY = "learn-lang-v1";
 const DEFAULT_LANG: Lang = "es";

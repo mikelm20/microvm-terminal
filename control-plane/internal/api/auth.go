@@ -67,7 +67,7 @@ func (h *authHandler) RequestMagicLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, apitypes.RequestMagicLinkResponse{
-		OK:               true,
+		Ok:               true,
 		ExpiresInSeconds: int(ttl.Seconds()),
 	})
 }
@@ -142,5 +142,5 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		_ = h.deps.Store.DeleteAuthSession(r.Context(), c.Value)
 	}
 	http.SetCookie(w, auth.ClearSessionCookie(h.deps.SecureCookies))
-	writeJSON(w, http.StatusOK, apitypes.OKResponse{OK: true})
+	writeJSON(w, http.StatusOK, apitypes.OKResponse{Ok: true})
 }

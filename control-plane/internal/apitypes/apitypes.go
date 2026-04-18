@@ -33,8 +33,8 @@ type RequestMagicLinkRequest struct {
 }
 
 type RequestMagicLinkResponse struct {
-	Ok               bool    `json:"ok"`
-	ExpiresInSeconds float64 `json:"expires_in_seconds"`
+	Ok               bool `json:"ok"`
+	ExpiresInSeconds int  `json:"expires_in_seconds"`
 }
 
 type ClaimAccountRequest struct {
@@ -54,9 +54,9 @@ type MeResponse struct {
 	Lang           string  `json:"lang"`
 	Department     *string `json:"department,omitempty"`
 	Name           *string `json:"name,omitempty"`
-	StreakDays     float64 `json:"streak_days"`
-	TotalXP        float64 `json:"total_xp"`
-	GraceTokens    float64 `json:"grace_tokens"`
+	StreakDays     int     `json:"streak_days"`
+	TotalXP        int     `json:"total_xp"`
+	GraceTokens    int     `json:"grace_tokens"`
 	HapticsEnabled bool    `json:"haptics_enabled"`
 	PushEnabled    bool    `json:"push_enabled"`
 	CreatedAt      string  `json:"created_at"`
@@ -77,9 +77,9 @@ type PatchMeResponse struct {
 	Lang           string  `json:"lang"`
 	Department     *string `json:"department,omitempty"`
 	Name           *string `json:"name,omitempty"`
-	StreakDays     float64 `json:"streak_days"`
-	TotalXP        float64 `json:"total_xp"`
-	GraceTokens    float64 `json:"grace_tokens"`
+	StreakDays     int     `json:"streak_days"`
+	TotalXP        int     `json:"total_xp"`
+	GraceTokens    int     `json:"grace_tokens"`
 	HapticsEnabled bool    `json:"haptics_enabled"`
 	PushEnabled    bool    `json:"push_enabled"`
 	CreatedAt      string  `json:"created_at"`
@@ -89,63 +89,39 @@ type PatchMeResponse struct {
 type ModuleProgress struct {
 	CompletedSteps []string `json:"completed_steps"`
 	PausedAt       *string  `json:"paused_at,omitempty"`
-	XPEarned       float64  `json:"xp_earned"`
-}
-
-type ProgressStateModulesValue struct {
-	CompletedSteps []string `json:"completed_steps"`
-	PausedAt       *string  `json:"paused_at,omitempty"`
-	XPEarned       float64  `json:"xp_earned"`
+	XPEarned       int      `json:"xp_earned"`
 }
 
 type ProgressState struct {
-	Modules        map[string]ProgressStateModulesValue `json:"modules"`
-	StreakDays     float64                              `json:"streak_days"`
-	GraceTokens    float64                              `json:"grace_tokens"`
-	LastVisited    string                               `json:"last_visited"`
-	SeenCoachmarks []string                             `json:"seen_coachmarks"`
-	UpdatedAt      string                               `json:"updated_at"`
-}
-
-type ProgressSyncRequestState struct {
-	Modules        map[string]ProgressStateModulesValue `json:"modules"`
-	StreakDays     float64                              `json:"streak_days"`
-	GraceTokens    float64                              `json:"grace_tokens"`
-	LastVisited    string                               `json:"last_visited"`
-	SeenCoachmarks []string                             `json:"seen_coachmarks"`
-	UpdatedAt      string                               `json:"updated_at"`
+	Modules        map[string]ModuleProgress `json:"modules"`
+	StreakDays     int                       `json:"streak_days"`
+	GraceTokens    int                       `json:"grace_tokens"`
+	LastVisited    string                    `json:"last_visited"`
+	SeenCoachmarks []string                  `json:"seen_coachmarks"`
+	UpdatedAt      string                    `json:"updated_at"`
 }
 
 type ProgressSyncRequest struct {
-	UUID  string                   `json:"uuid"`
-	State ProgressSyncRequestState `json:"state"`
+	UUID  string        `json:"uuid"`
+	State ProgressState `json:"state"`
 }
 
 type ProgressSyncResponse struct {
-	State           ProgressSyncRequestState `json:"state"`
-	ServerUpdatedAt string                   `json:"server_updated_at"`
+	State           ProgressState `json:"state"`
+	ServerUpdatedAt string        `json:"server_updated_at"`
 }
 
 type LessonSummary struct {
-	ID               string   `json:"id"`
-	ModuleNumber     float64  `json:"module_number"`
-	Language         string   `json:"language"`
-	Title            string   `json:"title"`
-	Subtitle         *string  `json:"subtitle,omitempty"`
-	EstimatedMinutes *float64 `json:"estimated_minutes,omitempty"`
-}
-
-type ListLessonsResponseLessonsItem struct {
-	ID               string   `json:"id"`
-	ModuleNumber     float64  `json:"module_number"`
-	Language         string   `json:"language"`
-	Title            string   `json:"title"`
-	Subtitle         *string  `json:"subtitle,omitempty"`
-	EstimatedMinutes *float64 `json:"estimated_minutes,omitempty"`
+	ID               string  `json:"id"`
+	ModuleNumber     int     `json:"module_number"`
+	Language         string  `json:"language"`
+	Title            string  `json:"title"`
+	Subtitle         *string `json:"subtitle,omitempty"`
+	EstimatedMinutes *int    `json:"estimated_minutes,omitempty"`
 }
 
 type ListLessonsResponse struct {
-	Lessons []ListLessonsResponseLessonsItem `json:"lessons"`
+	Lessons []LessonSummary `json:"lessons"`
 }
 
 type CreateSessionRequest struct {
@@ -163,12 +139,12 @@ type CreateSessionResponse struct {
 }
 
 type HeartbeatResponse struct {
-	SessionID   string  `json:"session_id"`
-	VMIP        string  `json:"vm_ip"`
-	Alive       bool    `json:"alive"`
-	ClaudeBusy  bool    `json:"claude_busy"`
-	LastEventAt string  `json:"last_event_at"`
-	AgeSeconds  float64 `json:"age_seconds"`
+	SessionID   string `json:"session_id"`
+	VMIP        string `json:"vm_ip"`
+	Alive       bool   `json:"alive"`
+	ClaudeBusy  bool   `json:"claude_busy"`
+	LastEventAt string `json:"last_event_at"`
+	AgeSeconds  int    `json:"age_seconds"`
 }
 
 type TranscriptResponse struct {
@@ -202,8 +178,8 @@ type PublicProfileResponse struct {
 	Name             *string                                     `json:"name,omitempty"`
 	Department       *string                                     `json:"department,omitempty"`
 	Lang             string                                      `json:"lang"`
-	StreakDays       float64                                     `json:"streak_days"`
-	TotalXP          float64                                     `json:"total_xp"`
+	StreakDays       int                                         `json:"streak_days"`
+	TotalXP          int                                         `json:"total_xp"`
 	ModulesCompleted []PublicProfileResponseModulesCompletedItem `json:"modules_completed"`
 }
 
@@ -219,11 +195,11 @@ type PublicCertificateResponse struct {
 }
 
 type ApiError struct {
-	Code              string   `json:"code"`
-	Message           string   `json:"message"`
-	RetryAfterSeconds *float64 `json:"retry_after_seconds,omitempty"`
-	QueuePosition     *float64 `json:"queue_position,omitempty"`
-	RequestID         string   `json:"request_id"`
+	Code              string `json:"code"`
+	Message           string `json:"message"`
+	RetryAfterSeconds *int   `json:"retry_after_seconds,omitempty"`
+	QueuePosition     *int   `json:"queue_position,omitempty"`
+	RequestID         string `json:"request_id"`
 }
 
 type SessionStartedEvent struct {
@@ -256,16 +232,16 @@ type ProcessStartedEvent struct {
 }
 
 type PortListeningEvent struct {
-	TS   string  `json:"ts"`
-	Type string  `json:"type"`
-	Port float64 `json:"port"`
+	TS   string `json:"ts"`
+	Type string `json:"type"`
+	Port int    `json:"port"`
 }
 
 type ClaudePromptSentEvent struct {
 	TS             string  `json:"ts"`
 	Type           string  `json:"type"`
 	Text           string  `json:"text"`
-	Length         float64 `json:"length"`
+	Length         int     `json:"length"`
 	LocaleDetected *string `json:"locale_detected,omitempty"`
 }
 
@@ -296,12 +272,12 @@ type ClaudeSlashCommandEvent struct {
 }
 
 type ClaudeMessageEvent struct {
-	TS         string   `json:"ts"`
-	Type       string   `json:"type"`
-	Role       string   `json:"role"`
-	Text       string   `json:"text"`
-	DurationMs *float64 `json:"duration_ms,omitempty"`
-	TurnID     string   `json:"turn_id"`
+	TS         string `json:"ts"`
+	Type       string `json:"type"`
+	Role       string `json:"role"`
+	Text       string `json:"text"`
+	DurationMs *int   `json:"duration_ms,omitempty"`
+	TurnID     string `json:"turn_id"`
 }
 
 type ClaudeBusyEvent struct {
@@ -311,17 +287,17 @@ type ClaudeBusyEvent struct {
 }
 
 type ClaudeThinkingEvent struct {
-	TS         string  `json:"ts"`
-	Type       string  `json:"type"`
-	CharsSoFar float64 `json:"chars_so_far"`
+	TS         string `json:"ts"`
+	Type       string `json:"type"`
+	CharsSoFar int    `json:"chars_so_far"`
 }
 
 type ClaudeTokenStreamedEvent struct {
-	TS         string  `json:"ts"`
-	Type       string  `json:"type"`
-	TurnID     string  `json:"turn_id"`
-	Delta      string  `json:"delta"`
-	TotalChars float64 `json:"total_chars"`
+	TS         string `json:"ts"`
+	Type       string `json:"type"`
+	TurnID     string `json:"turn_id"`
+	Delta      string `json:"delta"`
+	TotalChars int    `json:"total_chars"`
 }
 
 type FileExistsEvent struct {

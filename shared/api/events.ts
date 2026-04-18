@@ -30,7 +30,7 @@ export const ProcessStartedEvent = BaseEvent.extend({
 
 export const PortListeningEvent = BaseEvent.extend({
   type: z.literal("port_listening"),
-  port: z.number(),
+  port: z.number().int(),
 });
 
 export const ToolNameSchema = z.enum([
@@ -51,7 +51,7 @@ export type ToolName = z.infer<typeof ToolNameSchema>;
 export const ClaudePromptSentEvent = BaseEvent.extend({
   type: z.literal("claude_prompt_sent"),
   text: z.string(),
-  length: z.number(),
+  length: z.number().int(),
   locale_detected: z.string().optional(),
 });
 
@@ -82,7 +82,7 @@ export const ClaudeMessageEvent = BaseEvent.extend({
   type: z.literal("claude_message"),
   role: z.enum(["user", "assistant", "system"]),
   text: z.string(),
-  duration_ms: z.number().optional(),
+  duration_ms: z.number().int().optional(),
   turn_id: z.string(),
 });
 
@@ -93,14 +93,14 @@ export const ClaudeBusyEvent = BaseEvent.extend({
 
 export const ClaudeThinkingEvent = BaseEvent.extend({
   type: z.literal("claude_thinking"),
-  chars_so_far: z.number(),
+  chars_so_far: z.number().int(),
 });
 
 export const ClaudeTokenStreamedEvent = BaseEvent.extend({
   type: z.literal("claude_token_streamed"),
   turn_id: z.string(),
   delta: z.string(),
-  total_chars: z.number(),
+  total_chars: z.number().int(),
 });
 
 export const FileExistsEvent = BaseEvent.extend({

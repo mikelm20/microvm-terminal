@@ -5,12 +5,12 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { tokens } from "@learn/shared-tokens";
 import type { Department } from "@learn/shared-api/schemas";
 import { RoleTile } from "../components/role/RoleTile";
 import { useT } from "../lib/i18n";
 import { setDepartment } from "../lib/api";
+import { haptics } from "../lib/haptics";
 
 const DEPARTMENTS: Department[] = [
   "ventas",
@@ -35,11 +35,7 @@ export default function RolePickScreen() {
 
   const onPick = async (id: Department) => {
     setSelected(id);
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      // Platforms without haptics can ignore.
-    }
+    void haptics.confirm();
     setSaving(true);
     // Fire and forget: the UI does not block on the server acknowledging.
     void setDepartment(id).catch(() => {});

@@ -9,7 +9,7 @@ import Animated, {
 import { useEffect } from "react";
 import { motion, enterTiming } from "../../lib/motion";
 import { t } from "../../lib/i18n";
-import type { Lang } from "@learn/shared-voice";
+import type { Lang, VoiceKey } from "@learn/shared-voice";
 import type { WsEvent as WsEventT, ToolName } from "@learn/shared-api/events";
 type ToolCallEvt = Extract<WsEventT, { type: "claude_tool_call" }>;
 type ToolResultEvt = Extract<WsEventT, { type: "claude_tool_result" }>;
@@ -90,7 +90,7 @@ function labelForTool(tool: ToolName): string {
 }
 
 function resolveHeadline(call: ToolCallEvt, lang: Lang): string {
-  const key = `lesson.tool_cards.${call.tool}`;
+  const key = `lesson.tool_cards.${call.tool}` as VoiceKey;
   const params: Record<string, string> = {};
   const path = call.path ?? call.args["file_path"] ?? call.args["path"] ?? "";
   const command = call.command ?? call.args["command"] ?? "";

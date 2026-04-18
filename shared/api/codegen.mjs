@@ -92,8 +92,24 @@ function pascal(s) {
     .join("");
 }
 
+// Canonicalize schema for dedup: sort object keys, drop metadata-only fields
+// that zod-to-json-schema sometimes inlines (description, $schema, additionalProperties
+// when it is an empty boolean-esque value). This keeps structurally-equal shapes
+// collapsing to the same key even if they are declared at top-level vs inlined.
+function canonical(x) {
+  if (Array.isArray(x)) return x.map(canonical);
+  if (x && typeof x === "object") {
+    const out = {};
+    const skip = new Set(["$schema", "description", "title"]);
+    const keys = Object.keys(x).filter((k) => !skip.has(k)).sort();
+    for (const k of keys) out[k] = canonical(x[k]);
+    return out;
+  }
+  return x;
+}
+
 function schemaKey(s) {
-  return JSON.stringify(s);
+  return JSON.stringify(canonical(s));
 }
 
 // Normalize nullable: returns { schema, nullable }.
@@ -129,7 +145,7 @@ function goScalar(schema) {
     case "string":
       return "string";
     case "integer":
-      return "int64";
+      return "int";
     case "number":
       return "float64";
     case "boolean":
