@@ -24,8 +24,15 @@ FQDN_TARGET="${FQDN_TARGET:-learn-01.example.com}"
 LEARN_USER="${LEARN_USER:-learn}"
 LEARN_HOME="${LEARN_HOME:-/var/lib/learn-platform}"
 LEARN_ETC="${LEARN_ETC:-/etc/learn-platform}"
+LEARN_LIBEXEC="${LEARN_LIBEXEC:-/usr/local/libexec/learn-platform}"
 FC_DATA_DIR="${FC_DATA_DIR:-/var/lib/firecracker}"
 FC_DATA_DEV="${FC_DATA_DEV:-/dev/nvme0n1}"
+JAILER_CHROOT_BASE="${JAILER_CHROOT_BASE:-/srv/jailer}"
+
+### --- Source layout (this repo) ------------------------------------------
+# Where bootstrap.sh expects to find the infra payload when it runs. If you
+# clone elsewhere, set LEARN_REPO_DIR.
+LEARN_REPO_DIR="${LEARN_REPO_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 ### --- Helpers ------------------------------------------------------------
 log()     { printf '\n\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
@@ -218,6 +225,79 @@ create_learn_user() {
   usermod -aG kvm "${LEARN_USER}" 2>/dev/null || true
 }
 
+install_doppler() {
+  if command -v doppler >/dev/null; then
+    log "Doppler CLI already installed"
+    return 0
+  fi
+  log "Installing Doppler CLI (official apt repo)"
+  # Source: https://docs.doppler.com/docs/install-cli
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL --retry 3 'https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key' \
+    | gpg --dearmor -o /etc/apt/keyrings/doppler.gpg
+  chmod a+r /etc/apt/keyrings/doppler.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/doppler.gpg] https://packages.doppler.com/public/cli/deb/debian any-version main" \
+    > /etc/apt/sources.list.d/doppler-cli.list
+  apt-get update -y
+  apt_install doppler
+}
+
+install_gate_scripts() {
+  log "Installing jailer.sh + refresh-sets.sh under ${LEARN_LIBEXEC}"
+  install -d -m 0755 "${LEARN_LIBEXEC}"
+  install -m 0755 "${LEARN_REPO_DIR}/infra/jailer/jailer.sh" \
+    "${LEARN_LIBEXEC}/jailer.sh"
+  install -m 0755 "${LEARN_REPO_DIR}/infra/nftables/refresh-sets.sh" \
+    "${LEARN_LIBEXEC}/refresh-sets.sh"
+
+  install -d -m 0755 "${LEARN_ETC}/jailer"
+  install -m 0644 "${LEARN_REPO_DIR}/infra/jailer/profile.d/learn-seccomp.json" \
+    "${LEARN_ETC}/jailer/learn-seccomp.json"
+
+  install -d -m 0755 "${LEARN_ETC}/nftables"
+  install -m 0644 "${LEARN_REPO_DIR}/infra/nftables/learn.rules" \
+    "${LEARN_ETC}/nftables/learn.rules"
+
+  install -d -m 0755 "${JAILER_CHROOT_BASE}"
+}
+
+install_systemd_units() {
+  log "Installing systemd units for the gate"
+  install -m 0644 "${LEARN_REPO_DIR}/infra/systemd/learn-nftables.service" \
+    /etc/systemd/system/learn-nftables.service
+  install -m 0644 "${LEARN_REPO_DIR}/infra/systemd/learn-nftables-refresh.service" \
+    /etc/systemd/system/learn-nftables-refresh.service
+  install -m 0644 "${LEARN_REPO_DIR}/infra/systemd/learn-nftables-refresh.timer" \
+    /etc/systemd/system/learn-nftables-refresh.timer
+  install -m 0644 "${LEARN_REPO_DIR}/infra/systemd/claude-proxy.service" \
+    /etc/systemd/system/claude-proxy.service
+  install -m 0644 "${LEARN_REPO_DIR}/infra/systemd/firecracker-jailer@.service" \
+    /etc/systemd/system/firecracker-jailer@.service
+
+  systemctl daemon-reload
+  systemctl enable --now learn-nftables.service
+  systemctl enable --now learn-nftables-refresh.timer
+  # claude-proxy requires Doppler to be configured with a service token; we
+  # enable the unit but do not start. Operator enables after
+  #   `sudo -u learn doppler configure set token <prd-token> --scope /var/lib/learn-platform`
+  systemctl enable claude-proxy.service
+  log "enabled claude-proxy.service (not started; needs Doppler service token)"
+}
+
+run_migrations() {
+  # Postgres migrations live in control-plane/internal/db/migrations, owned by
+  # Agent-API. For now, the proxy creates its own schema on boot (idempotent)
+  # so a bootstrap on a fresh box does not need goose until Agent-API merges.
+  if command -v goose >/dev/null; then
+    log "goose present; running control-plane migrations"
+    : # placeholder: control plane sets DATABASE_URL via doppler run; we don't
+      # have it here. Leave this to the control-plane systemd unit's
+      # ExecStartPre once Agent-API wires it.
+  else
+    log "goose not installed; skipping migrations (proxy self-migrates its table)"
+  fi
+}
+
 harden_ssh() {
   log "Hardening sshd"
   local cfg=/etc/ssh/sshd_config.d/99-learn-platform.conf
@@ -260,7 +340,11 @@ main() {
   install_node
   install_caddy
   install_docker
+  install_doppler
   create_learn_user
+  install_gate_scripts
+  install_systemd_units
+  run_migrations
   harden_ssh
   reboot_hint
   log "bootstrap.sh complete"
