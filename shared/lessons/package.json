@@ -1,0 +1,20 @@
+{
+  "name": "@learn/shared-lessons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./schema": "./schema.ts",
+    "./loader": "./loader.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
+}

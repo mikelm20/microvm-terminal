@@ -13,7 +13,14 @@ claude-oauth-token
 coverage.out
 coverage.html
 
-# Node / Next.js
+# Node / Next.js / monorepo
+node_modules/
+.turbo/
+.next/
+dist/
+build/
+coverage/
+*.log
 /web/node_modules/
 /web/.next/
 /web/out/
@@ -21,6 +28,21 @@ coverage.html
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Expo / RN
+.expo/
+apps/mobile/ios/
+apps/mobile/android/
+
+# Go binaries at top-level
+/control-plane/learn-cp
+/control-plane/learn-cp.*
+/guest-agent/learn-guest-agent
+/vm-image/claude-wrap/claude-wrap
+/proxy/claude-proxy
+
+# Test fixture scratch
+tests/fixtures/claude/.tmp/
 
 # VM image build artifacts (large, reproducible)
 /vm-image/build/
