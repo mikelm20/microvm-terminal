@@ -1,0 +1,21 @@
+# Doppler project config for learn-platform.
+#
+# Commit this file so everyone's local doppler CLI picks the right
+# project + config by default. Actual secrets live in Doppler, never here.
+# `doppler setup` reads this on first use. To change config at runtime:
+#     doppler run --config stg -- pnpm dev
+#
+# Canonical mapping of scopes:
+#
+#   ./control-plane     -> project=learn-platform, config=dev   (local dev)
+#   ./proxy             -> project=learn-platform, config=dev   (local dev)
+#   CI (pull requests)  -> project=learn-platform, config=ci
+#   Staging host        -> project=learn-platform, config=stg
+#   Production host     -> project=learn-platform, config=prd
+#
+# The `prd` config is read-access only for engineers; rotate-access is limited
+# to two named operators. Set via the Doppler dashboard, not here.
+
+setup:
+  - project: learn-platform
+    config: dev
