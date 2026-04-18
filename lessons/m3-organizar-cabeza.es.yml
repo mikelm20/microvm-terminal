@@ -6,10 +6,11 @@
 # Empresa Prueba; los archivos creados aqui persisten para los modulos
 # 4-8.
 #
-# Predicados que necesita el control plane:
+# Predicados:
 #   - claude_tool_call: { tool: Bash, command_regex: "mkdir.*mi-trabajo" }
-#   - file_exists:      { path: "/home/learner/empresa-prueba/mi-trabajo/CLAUDE.md" }
-#   - file_contents_regex: { path: ".../CLAUDE.md", match: "(?i)(empresa\\s+prueba|mi nombre|me llamo)" }
+#   - claude_tool_call: { tool: Bash, command_regex: "01-personas.*02-proyectos.*03-empresas.*04-archivo" }
+#   - file_contents_regex: { path: ".../CLAUDE.md", regex: "(?is)(empresa|mi nombre|prioridades|respuestas cortas)" }
+#   - claude_prompt_sent: { match_regex: "(?i)prioridades" }
 
 id: m3-organizar-cabeza
 module_number: 3
@@ -47,12 +48,13 @@ steps:
       sabe traducirlo a un mkdir. No tienes que aprenderte
       comandos.
     xp: 10
+    expected_response_seconds: 20
     success:
       type: claude_tool_call
       match:
         tool: Bash
         command_regex: "mkdir.*mi-trabajo"
-    success_title: "¡Bien! Ya tienes tu carpeta"
+    success_title: "Bien. Ya tienes tu carpeta"
     success_sub: "Ganas 10 XP. Ahora dividela en cuatro como divides tu cabeza."
 
   - id: subcarpetas
@@ -68,12 +70,13 @@ steps:
       Truco: nombres con prefijo numerico. Asi siempre salen en
       el mismo orden y el cerebro se acostumbra.
     xp: 10
+    expected_response_seconds: 25
     success:
       type: claude_tool_call
       match:
         tool: Bash
         command_regex: "01-personas.*02-proyectos.*03-empresas.*04-archivo"
-    success_title: "¡Bien! Tu estructura ya esta montada"
+    success_title: "Bien. Tu estructura ya esta montada"
     success_sub: "Ganas 10 XP. Ultimo paso: dale a Claude tu hoja de presentacion."
 
   - id: crear-claude-md
@@ -92,13 +95,97 @@ steps:
       Truco: lo que escribas hoy son diez lineas. En un mes seran
       treinta. Crece con el uso. No clavas el dia uno.
     xp: 10
+    expected_response_seconds: 40
     success:
       type: file_contents_regex
       match:
         path: /home/learner/empresa-prueba/mi-trabajo/CLAUDE.md
         regex: "(?is)(empresa\\s+prueba|prioridades|respuestas\\s+cortas)"
-    success_title: "¡Bien! Claude ya sabe quien eres"
+    success_title: "Bien. Claude ya sabe quien eres"
     success_sub: "Ganas 10 XP. Manda /memory dentro de Claude para verlo cuando quieras."
+    role_variants:
+      ventas:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas ventas en Empresa
+          Prueba, que trabajas con numeros (pipeline, ciclo, win
+          rate) y que este trimestre cierras el Q y preparas la
+          propuesta de Acme Corp.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo ventas en Empresa Prueba, que prefiero respuestas
+          cortas en espanol con numeros por delante, y que mis
+          prioridades son cerrar el trimestre y la propuesta Acme.
+      marketing:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas marketing en
+          Empresa Prueba, que trabajas con datos (MQLs, embudo,
+          coste por lead) y que priorizas campana vertical y
+          retencion de comunidad.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo marketing en Empresa Prueba, prefiero respuestas
+          cortas en espanol con datos por delante, y mis prioridades
+          son la campana vertical y la retencion.
+      tecnologia:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas tecnologia en
+          Empresa Prueba, trabajas con trade offs explicitos y
+          priorizas la migracion de auth y el SLO p99.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo tecnologia en Empresa Prueba, prefiero respuestas
+          cortas en espanol con trade offs explicitos, y mis
+          prioridades son migracion de auth y SLO p99.
+      producto:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas producto en
+          Empresa Prueba, trabajas problema antes que solucion y
+          priorizas export CSV y SSO.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo producto en Empresa Prueba, prefiero respuestas
+          cortas en espanol problema primero, y mis prioridades
+          son export CSV y SSO.
+      finanzas:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas finanzas en
+          Empresa Prueba, trabajas con cifras, plazos e importes y
+          priorizas el cierre del Q y el DSO.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo finanzas en Empresa Prueba, prefiero respuestas
+          cortas en espanol con cifra primero, y mis prioridades
+          son cierre de Q y reducir DSO.
+      rrhh:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas rrhh en Empresa
+          Prueba, trabajas personas antes que procesos y priorizas
+          cubrir el senior eng y cerrar las revisiones.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo rrhh en Empresa Prueba, prefiero respuestas cortas
+          en espanol personas primero, y mis prioridades son cubrir
+          senior eng y cerrar revisiones.
+      legal:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas legal en Empresa
+          Prueba, trabajas cautela por defecto y priorizas los
+          NDAs estrategicos y cerrar DPAs de vendors.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo legal en Empresa Prueba, prefiero respuestas cortas
+          en espanol con riesgo primero, y mis prioridades son
+          NDAs estrategicos y DPAs de vendors.
+      estrategia:
+        body: >
+          CLAUDE.md en mi-trabajo. Di que llevas estrategia en
+          Empresa Prueba, trabajas con horizonte largo y opcionalidad
+          y priorizas decision Mexico y la ronda Series A.
+        prompt: |
+          crea un CLAUDE.md en la raiz de mi-trabajo. Escribe que
+          llevo estrategia en Empresa Prueba, prefiero respuestas
+          cortas en espanol con opciones reversibles, y mis
+          prioridades son decision Mexico y cierre de Series A.
 
   - id: probar-la-memoria
     title: Comprueba que Claude lo ha leido
@@ -113,10 +200,11 @@ steps:
       los CLAUDE.md que esta cargando ahora mismo, y desde donde.
       Util cuando algo no encaja.
     xp: 10
+    expected_response_seconds: 20
     success:
       type: claude_prompt_sent
       match_regex: "(?i)prioridades"
-    success_title: "¡Bien! Tu cerebro ya esta fuera"
+    success_title: "Bien. Tu cerebro ya esta fuera"
     success_sub: "Ganas 10 XP. Modulo 3 cerrado."
 
 on_complete:

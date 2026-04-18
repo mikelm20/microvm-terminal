@@ -93,6 +93,14 @@ RUN chmod 0755 /usr/local/bin/learn-guest-agent
 COPY learn-guest-agent.service /etc/systemd/system/learn-guest-agent.service
 RUN systemctl enable learn-guest-agent.service
 
+# claude-wrap: runs inside the VM in place of `claude`, parses stream-json
+# output into canonical wizard events and publishes them over a unix socket
+# the guest-agent tails. Binary staged into the build context as
+# `claude-wrap-bin` by vm-image/Makefile (`make claude-wrap-bin`).
+COPY claude-wrap-bin /usr/local/bin/claude-wrap
+RUN chmod 0755 /usr/local/bin/claude-wrap && \
+    install -d -m 0755 /run/learn
+
 # Make sure systemd mounts root rw (Firecracker mounts it ro at first)
 RUN printf '/dev/root / ext4 rw,noatime 0 1\n' > /etc/fstab
 

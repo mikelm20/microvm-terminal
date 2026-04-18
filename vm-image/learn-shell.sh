@@ -44,10 +44,20 @@ mkdir -p "${LEARN_CWD}" 2>/dev/null || true
 
 cd "${LEARN_CWD}" 2>/dev/null || cd "${HOME}"
 
+mkdir -p /run/learn 2>/dev/null || true
+
 while :; do
-  claude --dangerously-skip-permissions 2>&1 || true
-  # If we get here, Claude exited. Don't surface it to the user (no bash
-  # prompt), just relaunch. A tiny sleep avoids a fork bomb if claude is
-  # crashing instantly for some reason.
+  # claude-wrap spawns `claude --dangerously-skip-permissions
+  # --output-format stream-json --input-format stream-json --verbose` and
+  # emits canonical WsEvents on /run/learn/claude-wrap.sock for the
+  # guest-agent to relay over vsock. The learner still sees a chat on this
+  # PTY because claude-wrap echoes assistant text and tool-call hints.
+  /usr/local/bin/claude-wrap \
+    --socket /run/learn/claude-wrap.sock \
+    --cwd "${LEARN_CWD}" \
+    2>>/var/log/claude-wrap.log || true
+  # If we get here, claude-wrap exited. Don't surface it to the user (no
+  # bash prompt), just relaunch. A tiny sleep avoids a fork bomb if the
+  # wrapper crashes instantly for some reason.
   sleep 0.5
 done

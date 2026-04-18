@@ -2,19 +2,16 @@
 #
 # Crear un subagente real con la sintaxis canonica:
 #   .claude/agents/<name>/<name>.md  con frontmatter YAML
-# Campos verificados (claude-code-guide, 16-04-2026):
-#   - name (recomendado)
-#   - description (REQUERIDO, lo lee Claude para auto-delegar)
-#   - model (opcional)
-#   - tools (opcional, lista separada por espacios)
 #
-# El usuario tambien aprende que la invocacion no es manual: Claude
-# auto-delega cuando la tarea encaja con la description del subagente.
+# requires_camera en el ultimo paso: el learner hace una foto de la pizarra
+# o cuaderno donde esboza su equipo invisible, la manda al sandbox, y Claude
+# la usa como entrada para afinar la description del subagente.
 #
 # Predicados:
+#   - claude_slash_command: { command: "agents" }
 #   - file_exists:        { path: ".claude/agents/jefe-de-agenda/jefe-de-agenda.md" }
-#   - file_contents_regex { path: "...", match: "(?is)description:" }
 #   - claude_tool_call:   { tool: Task, subagent_type: "jefe-de-agenda" }
+#   - claude_tool_call:   { tool: Read, path_regex: ".claude/agents/jefe-de-agenda" }
 
 id: m5-subagentes
 module_number: 5
@@ -52,11 +49,12 @@ steps:
       desde un menu, pero hoy lo creamos a mano para que veas
       como funciona por dentro.
     xp: 10
+    expected_response_seconds: 15
     success:
       type: claude_slash_command
       match:
         command: agents
-    success_title: "¡Bien! Has visto que la estanteria esta vacia"
+    success_title: "Bien. Has visto que la estanteria esta vacia"
     success_sub: "Ganas 10 XP. Vamos a fichar al primero."
 
   - id: crear-jefe-de-agenda
@@ -78,12 +76,79 @@ steps:
       Cuanto mejor describa CUANDO usar este subagente, mejor
       lo activara Claude por su cuenta.
     xp: 10
+    expected_response_seconds: 60
     success:
       type: file_exists
       match:
         path: /home/learner/empresa-prueba/mi-trabajo/.claude/agents/jefe-de-agenda/jefe-de-agenda.md
-    success_title: "¡Bien! Tienes tu primer fichaje"
+    success_title: "Bien. Tienes tu primer fichaje"
     success_sub: "Ganas 10 XP. Ahora compruebalo y pruebalo."
+    role_variants:
+      ventas:
+        body: >
+          Crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Tu mision: encajar reuniones con clientes sin romper
+          pipeline y avisarte de huecos antes de cierres de Q.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: encajar reuniones con clientes sin romper
+          pipeline, avisarme de huecos antes de cierres de Q.
+      marketing:
+        body: >
+          Crea un subagente jefe-de-agenda para encajar reuniones
+          con agencia, eventos y deadlines de campana.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: encajar reuniones con agencia y eventos sin
+          romper deadlines de campana.
+      tecnologia:
+        body: >
+          Crea un subagente jefe-de-agenda para bloquear deep
+          work y proteger on-call.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: proteger bloques de deep work, respetar rotacion
+          de on-call.
+      producto:
+        body: >
+          Crea un subagente jefe-de-agenda para encajar discovery
+          con clientes sin pisar planning.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: encajar discovery con clientes sin pisar planning
+          ni reviews.
+      finanzas:
+        body: >
+          Crea un subagente jefe-de-agenda que proteja los cierres
+          mensuales y el reporting al board.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: proteger cierres mensuales, reporting al board,
+          avisar antes de DSO critico.
+      rrhh:
+        body: >
+          Crea un subagente jefe-de-agenda que respete confidenciales
+          y agrupe 1:1s.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: agrupar 1:1s por dia, respetar confidenciales,
+          bloquear revisiones.
+      legal:
+        body: >
+          Crea un subagente jefe-de-agenda que priorice revisiones
+          de contratos y audiencias.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: priorizar revisiones de contratos y audiencias,
+          avisar vencimientos.
+      estrategia:
+        body: >
+          Crea un subagente jefe-de-agenda que reserve tiempo para
+          board, inversores y partnerships.
+        prompt: |
+          crea un subagente llamado jefe-de-agenda en .claude/agents.
+          Mision: reservar tiempo para board, inversores,
+          partnerships, proteger horizonte largo.
 
   - id: invocar-jefe-de-agenda
     title: Pidele algo de su area sin nombrarlo
@@ -100,36 +165,40 @@ steps:
       description del subagente es vaga. Vuelve al .md, especifica
       mejor cuando se le debe llamar y reintenta.
     xp: 10
+    expected_response_seconds: 60
     success:
       type: claude_tool_call
       match:
         tool: Task
         subagent_type: jefe-de-agenda
-    success_title: "¡Bien! Claude ha delegado al especialista"
+    success_title: "Bien. Claude ha delegado al especialista"
     success_sub: "Ganas 10 XP. Ultimo paso: la regla de cuando NO crear mas."
 
   - id: regla-de-no-multiplicar
     title: La regla de no multiplicarlos
     body: >
       Dos o tres subagentes bien afinados valen mas que diez
-      vagos. Empieza con el que mas duele no tener. Anade cuando
-      vuelvas a notar la falta. Antes de cerrar el modulo, lee
-      el .md que has creado y mejoralo.
+      vagos. Haz una foto al cuaderno donde has esbozado tu equipo
+      invisible (o un papel en blanco con tres nombres) y mandala
+      al sandbox. Claude la usara para proponerte mejoras en la
+      description del jefe-de-agenda que ya creaste.
     prompt: |
-      relee el .md del jefe-de-agenda y proponme tres mejoras
-      para que su description sea mas precisa. No edites,
-      proponlas.
+      mira la foto que acabo de mandar y, junto con el .md del
+      jefe-de-agenda, proponme tres mejoras para que su description
+      sea mas precisa. No edites, proponlas.
     hint: >
       Truco: revisar el .md es trabajo del usuario, no de Claude.
       Pidele propuestas, decide tu, edita tu. Asi mantienes
       control sobre quien hace que en tu equipo invisible.
     xp: 10
+    expected_response_seconds: 90
+    requires_camera: true
     success:
       type: claude_tool_call
       match:
         tool: Read
         path_regex: ".claude/agents/jefe-de-agenda"
-    success_title: "¡Bien! Ya sabes hacer crecer el equipo"
+    success_title: "Bien. Ya sabes hacer crecer el equipo"
     success_sub: "Ganas 10 XP. Modulo 5 cerrado."
 
 on_complete:
