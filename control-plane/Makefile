@@ -31,3 +31,26 @@ clean:
 # Install onto the host: build + copy to /usr/local/bin. Requires sudo.
 install: build
 	sudo install -m 0755 $(OUT_DIR)/$(BINARY) /usr/local/bin/$(BINARY)
+
+# --- dev targets ---
+
+# Run the full curl test suite against a fresh dev DB. Requires a running
+# Postgres via docker-compose (see infra/docker-compose.dev.yml).
+.PHONY: test-curl
+test-curl:
+	bash tests/run.sh
+
+# Run `goose up` using the provided binary (if installed). Falls back to
+# the built-in migration runner via a dry-start of the server.
+.PHONY: migrate
+migrate:
+	@if command -v goose >/dev/null; then \
+		goose -dir internal/db/migrations postgres "$(DATABASE_URL)" up; \
+	else \
+		echo "goose not installed; server migrates on startup"; \
+	fi
+
+# Regenerate sqlc typed queries. Requires sqlc to be installed.
+.PHONY: sqlc
+sqlc:
+	sqlc generate

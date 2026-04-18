@@ -35,20 +35,51 @@ type Config struct {
 
 	// ClaudeOAuthTokenFile is read once at session launch and injected into the
 	// VM. For the MVP it's a single file; later it will become a per-session lookup.
-	ClaudeOAuthTokenFile string // default /etc/learn-platform/claude-oauth-token
+	ClaudeOAuthTokenFile string
 
-	// AuthPasswordFile contains a single-line shared secret that gates
-	// POST /sessions (and WS / DELETE for sessions). Everyone gets the same
-	// password for MVP; replace with per-user accounts before launch.
-	AuthPasswordFile string // default /etc/learn-platform/auth-password
+	// Legacy single-password gate. Kept for backwards compat with the old MVP.
+	AuthPasswordFile     string
+	AuthCookieSecretFile string
 
-	// AuthCookieSecretFile is HMAC key for signing the login cookie. 32 random
-	// bytes hex-encoded. Rotating invalidates all sessions (intentional).
-	AuthCookieSecretFile string // default /etc/learn-platform/auth-cookie-secret
+	// DatabaseURL is the Postgres DSN the new contract API writes to.
+	DatabaseURL string // default postgres://learn:learn@localhost:5432/learn?sslmode=disable
+
+	// IdentityCookieSecret is the HMAC key for the signed identity cookie.
+	// Hex-encoded 32 bytes. If empty at startup, the server generates one
+	// at runtime (dev convenience; production must set this explicitly).
+	IdentityCookieSecret string
+
+	// ResendAPIKey enables real email delivery. Empty falls back to stdout.
+	ResendAPIKey string
+
+	// ResendFromAddress is the "From" header on magic-link emails.
+	ResendFromAddress string
+
+	// PublicOrigin is the scheme+host the API is reachable at. Used when
+	// building magic-link URLs and WS URLs returned in responses.
+	PublicOrigin string // default http://localhost:8080
+
+	// LessonsDir is where the server reads lessons/*.yml from.
+	LessonsDir string
+
+	// VoiceDir is where the server reads shared/voice/<lang>.json from.
+	VoiceDir string
+
+	// WarmPoolTarget is how many pre-booted VMs to keep ready. 0 disables.
+	WarmPoolTarget int
+
+	// SecureCookies sets the Secure flag on issued cookies. Disable for
+	// local http development.
+	SecureCookies bool
+
+	// UseMockLauncher disables Firecracker and serves mock Sessions instead.
+	// Useful for macOS dev and CI.
+	UseMockLauncher bool
 }
 
 // Load reads a minimal TOML-like file. Keys are flat: `key = value`. Missing
 // file is OK; defaults fill in. Unknown keys are ignored (forward-compat).
+// Environment variables override file values (useful for Doppler / CI).
 func Load(path string) (Config, error) {
 	cfg := Config{
 		ListenAddr:           "127.0.0.1:8080",
@@ -64,17 +95,32 @@ func Load(path string) (Config, error) {
 		ClaudeOAuthTokenFile: "/etc/learn-platform/claude-oauth-token",
 		AuthPasswordFile:     "/etc/learn-platform/auth-password",
 		AuthCookieSecretFile: "/etc/learn-platform/auth-cookie-secret",
+		DatabaseURL:          "postgres://learn:learn@localhost:5432/learn?sslmode=disable",
+		PublicOrigin:         "http://localhost:8080",
+		LessonsDir:           "lessons",
+		VoiceDir:             "shared/voice",
+		WarmPoolTarget:       0,
+		SecureCookies:        false,
+		UseMockLauncher:      false,
 	}
 
-	f, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return cfg, nil
+	if path != "" {
+		f, err := os.Open(path)
+		if err == nil {
+			defer f.Close()
+			if err := parseTOML(f, &cfg); err != nil {
+				return cfg, err
+			}
+		} else if !os.IsNotExist(err) {
+			return cfg, fmt.Errorf("open %s: %w", path, err)
 		}
-		return cfg, fmt.Errorf("open %s: %w", path, err)
 	}
-	defer f.Close()
 
+	applyEnv(&cfg)
+	return cfg, nil
+}
+
+func parseTOML(f *os.File, cfg *Config) error {
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -120,10 +166,70 @@ func Load(path string) (Config, error) {
 			cfg.AuthPasswordFile = val
 		case "auth_cookie_secret_file":
 			cfg.AuthCookieSecretFile = val
+		case "database_url":
+			cfg.DatabaseURL = val
+		case "identity_cookie_secret":
+			cfg.IdentityCookieSecret = val
+		case "resend_api_key":
+			cfg.ResendAPIKey = val
+		case "resend_from_address":
+			cfg.ResendFromAddress = val
+		case "public_origin":
+			cfg.PublicOrigin = val
+		case "lessons_dir":
+			cfg.LessonsDir = val
+		case "voice_dir":
+			cfg.VoiceDir = val
+		case "warm_pool_target":
+			if n, err := strconv.Atoi(val); err == nil {
+				cfg.WarmPoolTarget = n
+			}
+		case "secure_cookies":
+			cfg.SecureCookies = (val == "true" || val == "1")
+		case "use_mock_launcher":
+			cfg.UseMockLauncher = (val == "true" || val == "1")
 		}
 	}
-	if err := sc.Err(); err != nil {
-		return cfg, fmt.Errorf("scan %s: %w", path, err)
+	return sc.Err()
+}
+
+func applyEnv(cfg *Config) {
+	if v := os.Getenv("LEARN_DATABASE_URL"); v != "" {
+		cfg.DatabaseURL = v
 	}
-	return cfg, nil
+	if v := os.Getenv("DATABASE_URL"); v != "" {
+		cfg.DatabaseURL = v
+	}
+	if v := os.Getenv("IDENTITY_COOKIE_SECRET"); v != "" {
+		cfg.IdentityCookieSecret = v
+	}
+	if v := os.Getenv("RESEND_API_KEY"); v != "" {
+		cfg.ResendAPIKey = v
+	}
+	if v := os.Getenv("RESEND_FROM"); v != "" {
+		cfg.ResendFromAddress = v
+	}
+	if v := os.Getenv("PUBLIC_ORIGIN"); v != "" {
+		cfg.PublicOrigin = v
+	}
+	if v := os.Getenv("LESSONS_DIR"); v != "" {
+		cfg.LessonsDir = v
+	}
+	if v := os.Getenv("VOICE_DIR"); v != "" {
+		cfg.VoiceDir = v
+	}
+	if v := os.Getenv("LEARN_LISTEN_ADDR"); v != "" {
+		cfg.ListenAddr = v
+	}
+	if v := os.Getenv("WARM_POOL_TARGET"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.WarmPoolTarget = n
+		}
+	}
+	if v := os.Getenv("SECURE_COOKIES"); v != "" {
+		cfg.SecureCookies = (v == "true" || v == "1")
+	}
+	if v := os.Getenv("USE_MOCK_LAUNCHER"); v != "" {
+		cfg.UseMockLauncher = (v == "true" || v == "1")
+	}
 }
