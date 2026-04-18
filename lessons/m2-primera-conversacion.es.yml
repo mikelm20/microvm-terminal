@@ -1,20 +1,21 @@
 # Modulo 2, Tu primera conversacion. Version ES.
 #
-# Esta es la primera leccion que ve un usuario sin cuenta tras pulsar
-# "Empezar gratis" en la landing. La conversacion con Claude es CONTINUA
-# durante los cuatro pasos: el sandbox, el proceso claude y el chat
-# se mantienen vivos entre pasos consecutivos.
+# Primera leccion que ve un usuario sin cuenta tras pulsar "Empezar gratis"
+# en la landing. La conversacion con Claude es CONTINUA durante los cuatro
+# pasos: el sandbox, el proceso claude y el chat se mantienen vivos entre
+# pasos consecutivos.
 #
-# Predicados que necesita el control plane para validar esta leccion
-# (algunos hoy son TODO, ver lessons/hello-claude.yml):
-#   - agent_online                                    (ya implementado)
-#   - process_started:        { name: claude }        (ya implementado)
-#   - claude_prompt_sent:     { match_regex: "..." }  (TODO, requiere claude-wrap)
-#   - claude_tool_call:       { tool: Read }          (TODO, requiere claude-wrap)
+# Esta leccion es voice_first (composer arranca con microfono): para romper
+# la barrera de "abrir terminal por primera vez", el learner habla en lugar
+# de escribir.
 #
-# Mientras claude-wrap no exista, el frontend puede caer al heuristico:
-# botones "He copiado el prompt" / "Lo he enviado" para avanzar manualmente,
-# pero la version canonica del YAML asume validacion real.
+# Predicados validados por control-plane/internal/lesson + claude-wrap:
+#   - claude_tool_call: { tool: Read, path_regex: "01-ventas" }
+#   - claude_prompt_sent: { match_regex }
+#
+# role_variants reemplaza el cuerpo y el prompt del paso segun el department
+# del learner. ventas es el default (hereda del cuerpo neutro). Cada variante
+# apunta al archivo del departamento correspondiente en ~/empresa-prueba/.
 
 id: m2-primera-conversacion
 module_number: 2
@@ -32,11 +33,9 @@ mental_model: >
   No hables con Claude como con un buscador. Hablale como a un
   becario listo que acaba de entrar. Contexto, objetivo, tono.
 
-# Estado inicial del entorno antes de que arranque el primer paso.
-# El control plane garantiza esto en el guest antes de mostrar la leccion.
 preconditions:
   working_directory: /home/learner/empresa-prueba
-  claude_running: true   # claude ya iniciado, prompt en blanco esperando
+  claude_running: true
 
 steps:
 
@@ -54,13 +53,102 @@ steps:
       Truco: "tres frases" es un objetivo claro. Sin esa pista,
       Claude te puede soltar dos parrafos. Con ella, te ajusta.
     xp: 10
+    expected_response_seconds: 25
+    voice_first: true
     success:
       type: claude_tool_call
       match:
         tool: Read
         path_regex: "01-ventas"
-    success_title: "¡Bien! Claude ha leido el departamento"
+    success_title: "Bien. Claude ha leido el departamento"
     success_sub: "Ganas 10 XP. Sigue con el paso 2 para aprender a corregirle."
+    role_variants:
+      ventas:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea tu departamento (01-ventas) y te responda en tres
+          frases. Dile DONDE mirar y QUE quieres de vuelta.
+        prompt: |
+          Lee la carpeta 01-ventas y dime en tres frases que hace
+          este departamento.
+        hint: >
+          Numeros primero en tu area: pipeline, ciclo, conversion.
+          "Tres frases" le obliga a ir al grano.
+      marketing:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea tu departamento (02-marketing) y te responda en tres
+          frases. Tu area es datos, no opiniones.
+        prompt: |
+          Lee la carpeta 02-marketing y dime en tres frases que
+          hace este departamento.
+        hint: >
+          Pide datos concretos (MQLs, conversion, canal). "Tres
+          frases" evita el discurso.
+      tecnologia:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 03-tecnologia y te responda en tres frases con los
+          trade offs explicitos.
+        prompt: |
+          Lee la carpeta 03-tecnologia y dime en tres frases que
+          hace este departamento y que trade offs tiene ahora mismo.
+        hint: >
+          Nada de "lo mejor". Pide "lo mejor para X sacrificando Y".
+      producto:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 04-producto y te responda en tres frases centradas
+          en los problemas que atiende, no en las soluciones.
+        prompt: |
+          Lee la carpeta 04-producto y dime en tres frases que
+          problemas atiende este departamento.
+        hint: >
+          Problemas antes que features. Quien, con que frecuencia,
+          que pierde si no se resuelve.
+      finanzas:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 05-finanzas y te responda en tres frases con cifras,
+          plazos e importes.
+        prompt: |
+          Lee la carpeta 05-finanzas y dime en tres frases que
+          hace este departamento. Numeros antes que palabras.
+        hint: >
+          En finanzas todo viene de un libro. Si Claude estima,
+          paralo y pidele fuente.
+      rrhh:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 06-rrhh y te responda en tres frases. Personas antes
+          que procesos.
+        prompt: |
+          Lee la carpeta 06-rrhh y dime en tres frases que hace
+          este departamento.
+        hint: >
+          Confidencialidad por defecto. Si algo huele a queja,
+          pidele que lo escale sin escribirlo.
+      legal:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 07-legal y te responda en tres frases con los
+          riesgos explicitos primero.
+        prompt: |
+          Lee la carpeta 07-legal y dime en tres frases que hace
+          este departamento y que riesgos tiene abiertos.
+        hint: >
+          Cautela por defecto. "Hay riesgo?" siempre va primero.
+      estrategia:
+        body: >
+          Claude Code esta abierto en Empresa Prueba. Pidele que
+          lea 08-estrategia y te responda en tres frases con
+          horizonte largo y decisiones reversibles donde aplique.
+        prompt: |
+          Lee la carpeta 08-estrategia y dime en tres frases que
+          hace este departamento.
+        hint: >
+          Sesgo a la opcionalidad. Si algo puede esperar a mas
+          datos, esperar.
 
   - id: corregir-sobre-la-marcha
     title: Ahora pide que sea mas corto
@@ -75,11 +163,68 @@ steps:
       "Mas corto" funciona. "Dos frases, tono informal,
       sin listas" funciona todavia mejor.
     xp: 10
+    expected_response_seconds: 20
+    voice_first: true
     success:
       type: claude_prompt_sent
       match_regex: "(?i)(dos\\s+frases|mas\\s+corto|informal)"
-    success_title: "¡Bien! Le has corregido sin reiniciar"
+    success_title: "Bien. Le has corregido sin reiniciar"
     success_sub: "Ganas 10 XP. Sigue con el paso 3 para pedir algo mas ambicioso."
+    role_variants:
+      ventas:
+        body: >
+          Corrige sobre la marcha. Pide lo mismo en dos frases,
+          tono informal. Ajusta sin empezar de cero.
+        prompt: |
+          demasiado largo, hazlo en dos frases y con tono informal
+      marketing:
+        body: >
+          Corrige sobre la marcha. Pide dos frases directas, tono
+          informal, sin jerga ni superlativos.
+        prompt: |
+          demasiado largo, hazlo en dos frases, informal y sin jerga
+      tecnologia:
+        body: >
+          Corrige sobre la marcha. Pide dos frases con el trade off
+          mas importante explicito.
+        prompt: |
+          demasiado largo, hazlo en dos frases e indica el trade off
+          principal
+      producto:
+        body: >
+          Corrige sobre la marcha. Pide dos frases centradas en el
+          problema mas grande, no en feature.
+        prompt: |
+          demasiado largo, hazlo en dos frases y destaca el problema
+          mas urgente
+      finanzas:
+        body: >
+          Corrige sobre la marcha. Pide dos frases con la cifra
+          clave primero.
+        prompt: |
+          demasiado largo, hazlo en dos frases con la cifra clave
+          por delante
+      rrhh:
+        body: >
+          Corrige sobre la marcha. Pide dos frases centradas en el
+          impacto en personas.
+        prompt: |
+          demasiado largo, hazlo en dos frases, impacto en personas
+          por delante
+      legal:
+        body: >
+          Corrige sobre la marcha. Pide dos frases con el riesgo
+          principal primero.
+        prompt: |
+          demasiado largo, hazlo en dos frases, riesgo principal
+          primero
+      estrategia:
+        body: >
+          Corrige sobre la marcha. Pide dos frases con la decision
+          mas reversible destacada.
+        prompt: |
+          demasiado largo, hazlo en dos frases, decision reversible
+          destacada
 
   - id: pedir-algo-ambicioso
     title: Pidele algo mas ambicioso
@@ -97,11 +242,75 @@ steps:
       "Pipeline, prioridades, riesgos" le da el esqueleto y
       evita que se invente uno.
     xp: 10
+    expected_response_seconds: 90
+    voice_first: true
     success:
       type: claude_prompt_sent
-      match_regex: "(?i)(resumen|estado).{0,40}(ventas|departamento)"
-    success_title: "¡Bien! Has pedido un entregable de verdad"
+      match_regex: "(?i)(resumen|estado).{0,40}(ventas|departamento|marketing|tecnologia|producto|finanzas|rrhh|legal|estrategia)"
+    success_title: "Bien. Has pedido un entregable de verdad"
     success_sub: "Ganas 10 XP. Ultimo paso: ver que pasa cuando le falta info."
+    role_variants:
+      ventas:
+        body: >
+          Pidele un resumen de una pagina del estado de ventas.
+          Pipeline, prioridades del trimestre y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de ventas. Pipeline, prioridades del
+          trimestre y dos riesgos.
+      marketing:
+        body: >
+          Pidele un resumen de una pagina del estado de marketing.
+          Embudo, campanas activas y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de marketing. Embudo, campanas activas y
+          dos riesgos.
+      tecnologia:
+        body: >
+          Pidele un resumen de una pagina del estado de tecnologia.
+          SLOs, deploys y dos riesgos tecnicos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de tecnologia. SLOs, deploys y dos riesgos.
+      producto:
+        body: >
+          Pidele un resumen de una pagina del estado de producto.
+          Iniciativas, adopcion y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de producto. Iniciativas, adopcion y dos
+          riesgos.
+      finanzas:
+        body: >
+          Pidele un resumen de una pagina del estado de finanzas.
+          ARR, burn y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de finanzas. ARR, burn y dos riesgos.
+      rrhh:
+        body: >
+          Pidele un resumen de una pagina del estado de rrhh.
+          Plantilla, vacantes abiertas y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de rrhh. Plantilla, vacantes y dos riesgos.
+      legal:
+        body: >
+          Pidele un resumen de una pagina del estado de legal.
+          Contratos en curso, compliance y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de legal. Contratos, compliance y dos
+          riesgos.
+      estrategia:
+        body: >
+          Pidele un resumen de una pagina del estado de estrategia.
+          Plan trianual, partnerships y dos riesgos.
+        prompt: |
+          preparame un resumen de una pagina del estado del
+          departamento de estrategia. Plan, partnerships y dos
+          riesgos.
 
   - id: pregunta-sin-datos
     title: Pidele algo que NO puede saber
@@ -117,15 +326,65 @@ steps:
       saberlo". Asi entrenas el habito de no aceptar datos
       sin fuente.
     xp: 10
+    expected_response_seconds: 30
+    voice_first: true
     success:
       type: claude_prompt_sent
-      match_regex: "(?i)(cuantos|clientes).{0,40}madrid"
-    success_title: "¡Bien! Acabas de aprender a fiarte de Claude"
+      match_regex: "(?i)(cuantos|clientes|numero|nombre).{0,40}(madrid|region|territorio|pais)"
+    success_title: "Bien. Acabas de aprender a fiarte de Claude"
     success_sub: "Ganas 10 XP. Has terminado tu primera conversacion."
+    role_variants:
+      ventas:
+        body: >
+          Pidele algo que no puede saber con tu data: cuantos
+          clientes tienes en Madrid. Que te diga "no tengo fuente".
+        prompt: |
+          cuantos clientes tenemos en Madrid?
+      marketing:
+        body: >
+          Pidele algo que no puede saber: cuantos MQLs vinieron de
+          Madrid. Que te diga "no tengo fuente".
+        prompt: |
+          cuantos MQLs vinieron de Madrid el ultimo trimestre?
+      tecnologia:
+        body: >
+          Pidele algo que no puede saber: latencia p99 por region.
+          Que te diga "no tengo fuente".
+        prompt: |
+          cual es la latencia p99 por region ahora mismo?
+      producto:
+        body: >
+          Pidele algo que no puede saber: adopcion de la ultima
+          feature en el segmento mid market. Que te diga "no tengo
+          fuente".
+        prompt: |
+          cual es la adopcion de la ultima feature en mid market?
+      finanzas:
+        body: >
+          Pidele algo que no puede saber: DSO por cliente top. Que
+          te diga "no tengo fuente".
+        prompt: |
+          cual es el DSO por cliente top esta semana?
+      rrhh:
+        body: >
+          Pidele algo que no puede saber: ENPS por departamento.
+          Que te diga "no tengo fuente".
+        prompt: |
+          cual es el ENPS por departamento en el ultimo ciclo?
+      legal:
+        body: >
+          Pidele algo que no puede saber: cuantos contratos
+          expiran en Q3 con cliente top. Que te diga "no tengo
+          fuente".
+        prompt: |
+          cuantos contratos expiran en Q3 con nuestros clientes top?
+      estrategia:
+        body: >
+          Pidele algo que no puede saber: probabilidad de cierre
+          de la Series A. Que te diga "no tengo fuente".
+        prompt: |
+          cual es la probabilidad real de cerrar la Series A en Q2?
 
-# Qué se muestra al cerrar la leccion (mock-fin del modulo, no del curso).
-# Para el modulo 2 dispara el muro de registro porque es la primera leccion
-# que completa un usuario sin cuenta.
 on_complete:
   total_xp: 40
   takeaways:
@@ -133,4 +392,4 @@ on_complete:
     - Corregir sobre la marcha sin empezar de cero.
     - Claude te avisa cuando no tiene datos, no inventa.
   next_module: m3-organizar-cabeza
-  trigger_signup: true   # primera leccion, dispara el muro de registro
+  trigger_signup: true

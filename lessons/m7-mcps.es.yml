@@ -2,18 +2,11 @@
 #
 # Comando canonico:
 #   claude mcp add <name> <launch-config>
-# Ejemplo simple verificado: filesystem MCP via npx.
-# Config en .mcp.json (proyecto) o ~/.claude/.mcp.json (usuario).
-#
-# IMPORTANTE: en el sandbox de Empresa Prueba el unico MCP que puede
-# correr de verdad sin credenciales reales es el filesystem MCP. Los
-# MCPs de Gmail, Drive y Calendar son ejemplos NARRATIVOS solamente,
-# no se ejecutan. La leccion lo dice explicitamente.
 #
 # Predicados:
-#   - claude_tool_call: { tool: Bash, command_regex: "claude\\s+mcp\\s+add" }
-#   - file_exists:      { path: ".mcp.json" }
 #   - claude_slash_command: { command: "mcp" }
+#   - claude_tool_call:     { tool: Bash, command_regex: "claude\\s+mcp\\s+add" }
+#   - claude_prompt_sent:   { match_regex }
 
 id: m7-mcps
 module_number: 7
@@ -30,7 +23,7 @@ sandbox: empresa-prueba
 mental_model: >
   Sin MCP, Claude te dice "deberias mandar este email". Con MCP,
   lo manda. Sin MCP, "tienes hueco el martes". Con MCP, agenda la
-  reunion. El nombre no importa. Piensa en un enchufe universal.
+  reunion.
 
 preconditions:
   working_directory: /home/learner/empresa-prueba/mi-trabajo
@@ -43,18 +36,19 @@ steps:
     body: >
       Como con /agents y /skills, hay un comando para ver el
       estado. /mcp te lista los servidores MCP activos en este
-      proyecto y a nivel usuario. Hoy esta vacio.
+      proyecto y a nivel usuario.
     prompt: |
       /mcp
     hint: >
       Truco: /mcp tambien te permite gestionar autenticaciones de
-      MCPs ya conectados. Util cuando algo deja de funcionar.
+      MCPs ya conectados.
     xp: 10
+    expected_response_seconds: 15
     success:
       type: claude_slash_command
       match:
         command: mcp
-    success_title: "¡Bien! Inventario hecho"
+    success_title: "Bien. Inventario hecho"
     success_sub: "Ganas 10 XP. Vamos a enchufar el primero."
 
   - id: anadir-filesystem-mcp
@@ -62,23 +56,22 @@ steps:
     body: >
       Es el mas simple de probar y no necesita credenciales. Con
       el, Claude puede leer y editar archivos fuera de
-      ~/empresa-prueba si los autorizas. Lo anades por linea de
-      comandos con claude mcp add.
+      ~/empresa-prueba si los autorizas.
     prompt: |
       anademe un MCP de filesystem usando npx
       @anthropic-ai/build-mcp-server-filesystem y dale acceso a
       la carpeta ~/empresa-prueba/mi-trabajo
     hint: >
-      Truco: la primera vez que un MCP intenta una accion
-      sensible, Claude te pide confirmacion en pantalla. No actua
-      a tus espaldas. Tu mandas.
+      Truco: la primera vez que un MCP intenta una accion sensible,
+      Claude te pide confirmacion en pantalla.
     xp: 10
+    expected_response_seconds: 60
     success:
       type: claude_tool_call
       match:
         tool: Bash
         command_regex: "claude\\s+mcp\\s+add.*filesystem"
-    success_title: "¡Bien! El primer enchufe esta puesto"
+    success_title: "Bien. El primer enchufe esta puesto"
     success_sub: "Ganas 10 XP. Pruebalo en el siguiente paso."
 
   - id: usar-filesystem-mcp
@@ -86,22 +79,38 @@ steps:
     body: >
       Una vez enchufado, no tienes que hacer nada distinto en
       tus prompts. Claude detecta el MCP y lo usa cuando
-      conviene. Pidele que liste tus subcarpetas pasando por el
-      MCP.
+      conviene.
     prompt: |
       usando el MCP de filesystem, listame todos los archivos
       de mi-trabajo y dime cuales he modificado en los ultimos
       siete dias
     hint: >
       Truco: si dudas si Claude esta usando el MCP o sus tools
-      internas, pregunta "¿que herramienta has usado y por que?".
-      Te lo cuenta.
+      internas, pregunta "que herramienta has usado y por que?".
     xp: 10
+    expected_response_seconds: 60
     success:
       type: claude_prompt_sent
       match_regex: "(?i)(filesystem|mcp).{0,60}(listame|listar|archivos)"
-    success_title: "¡Bien! Has hecho tu primera accion via MCP"
+    success_title: "Bien. Has hecho tu primera accion via MCP"
     success_sub: "Ganas 10 XP. Ultimo paso, importante."
+    role_variants:
+      ventas:
+        body: "Sugerencia: luego piensa en un MCP de CRM para automatizar contactos."
+      marketing:
+        body: "Sugerencia: luego piensa en un MCP de LinkedIn o tu CMS para publicar."
+      tecnologia:
+        body: "Sugerencia: luego piensa en MCPs de GitHub y Sentry para issues reales."
+      producto:
+        body: "Sugerencia: luego piensa en MCPs de tu analitica y tu tracker."
+      finanzas:
+        body: "Sugerencia: luego piensa en MCPs de tu banca y tu ERP."
+      rrhh:
+        body: "Sugerencia: luego piensa en MCPs de tu ATS y nomina (con permisos)."
+      legal:
+        body: "Sugerencia: luego piensa en MCPs de gestor documental (con permisos)."
+      estrategia:
+        body: "Sugerencia: luego piensa en MCPs de CRM ejecutivo y boardroom."
 
   - id: limites-y-permiso
     title: La regla de oro de los MCPs
@@ -109,19 +118,19 @@ steps:
       Los MCPs interesantes (Gmail, Drive, banco) abren la puerta
       a acciones sensibles: enviar emails, transferir, borrar.
       Antes de cualquiera de esas, Claude te pide confirmacion.
-      Tu mandas, el ejecuta solo lo autorizado. Siempre.
     prompt: >
       explicame en tres frases que pasaria si conectara un MCP
       de Gmail y te pidiera "responde a Pedro y agenda la
-      reunion". ¿Que harias tu y que me preguntarias antes?
+      reunion". Que harias tu y que me preguntarias antes?
     hint: >
       Truco: si un MCP intenta una accion sin pedirte confirmacion,
-      ese MCP esta mal configurado. Quitalo y avisanos.
+      ese MCP esta mal configurado.
     xp: 10
+    expected_response_seconds: 45
     success:
       type: claude_prompt_sent
       match_regex: "(?i)(gmail|confirmacion|permiso|preguntaria)"
-    success_title: "¡Bien! Has cerrado el modulo entendiendo el limite"
+    success_title: "Bien. Has cerrado el modulo entendiendo el limite"
     success_sub: "Ganas 10 XP. Modulo 7 cerrado."
 
 on_complete:

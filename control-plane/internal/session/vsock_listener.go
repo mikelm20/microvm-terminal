@@ -88,6 +88,8 @@ func (m *Manager) handleGuestConn(s *Session, conn net.Conn) {
 		return
 	}
 	m.logger.Info("guest-agent connected", "session", s.ID)
+	s.SetGuestConn(conn)
+	defer s.SetGuestConn(nil)
 
 	// Emit the hello to subscribers too, so the UI can react to "agent online".
 	s.Events.Publish(GuestEvent{Type: "agent_online", TS: nowRFC3339(), Payload: map[string]any{"hostname": hello.Payload["hostname"]}})

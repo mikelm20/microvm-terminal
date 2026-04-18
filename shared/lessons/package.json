@@ -14,15 +14,17 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "build": "tsc --noEmit -p tsconfig.json",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo",
+    "validate": "tsx validate.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.16.10",
+    "tsx": "^4.21.0",
     "typescript": "^5.6.2"
   }
 }

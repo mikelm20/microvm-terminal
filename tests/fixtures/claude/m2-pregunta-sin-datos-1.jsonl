@@ -1,0 +1,6 @@
+{"type":"system","subtype":"init","session_id":"test_m2_5","cwd":"/home/learner/empresa-prueba","model":"claude-sonnet-4-5"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"cuantos clientes tenemos en Madrid?"}]}}
+{"type":"assistant","message":{"id":"msg_1","role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Glob","input":{"pattern":"**/clientes*.md"}}]}}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"","is_error":false}]}}
+{"type":"assistant","message":{"id":"msg_2","role":"assistant","content":[{"type":"text","text":"No tengo datos de clientes por ciudad en este sandbox. Para responder necesitaria un fichero con clientes y su localizacion, por ejemplo 03-empresas/<empresa>.md con una linea 'Ciudad: Madrid'. No invento numeros, dime la fuente y respondo con cifras reales."}]}}
+{"type":"result","subtype":"success","session_id":"test_m2_5","duration_ms":1420,"result":"ok","num_turns":1}

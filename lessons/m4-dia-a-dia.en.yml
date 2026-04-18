@@ -1,30 +1,19 @@
 # Module 4, Day to day. EN version.
-#
-# Turn Claude Code into the first place you start the day and
-# the last one you close. The sandbox here already has a fictional
-# calendar (~/empresa-prueba/00-bandeja/) and unread emails
-# (~/empresa-prueba/00-bandeja/inbox/) so the user's prompts have
-# something concrete to read.
-#
-# Predicates:
-#   - claude_prompt_sent: regex per habit (brief, pre-meet, post-meet, close)
-#   - claude_tool_call:   { tool: Read, path_regex: "00-bandeja|01-personas" }
 
 id: m4-dia-a-dia
 module_number: 4
 language: en
 title: Day to day
-subtitle: Morning brief, pre-meeting brief, capture, close-out
+subtitle: Morning brief, pre-meeting briefs, logging, end of day
 description: >
   Four habits that change how you start and end the day. We start
-  with the first question of the morning and finish with the last
-  one of the afternoon. The whole conversation runs against
-  ~/empresa-prueba with the CLAUDE.md you left in module 3.
+  with the first question of the morning and end with the last of
+  the afternoon.
 estimated_minutes: 9
 sandbox: empresa-prueba
 mental_model: >
-  It's not just another app. It's your desk. Coffee, Claude, first
-  question of the day. Everything else flows through here.
+  This isn't just another app. It's your desk. Coffee, Claude,
+  first question of the day. Everything else flows through here.
 
 preconditions:
   working_directory: /home/learner/empresa-prueba
@@ -36,99 +25,170 @@ preconditions:
 steps:
 
   - id: parte-matinal
-    title: Ask for the morning brief
+    title: Ask for the daily brief
     body: >
       First question of the morning, always the same. Meetings,
       urgent emails, what you left open yesterday. Three blocks
-      in under a minute.
+      under a minute.
     prompt: |
-      Give me today's brief. Meetings, urgent emails, and what we
-      left open yesterday. Keep it short, three blocks.
+      Give me the daily brief. Meetings, urgent emails, and
+      anything we left open yesterday. Short, three blocks.
     hint: >
-      Trick: if you always ask in the same shape, tomorrow you
-      turn it into a skill (module 6) and the copy-paste
-      disappears.
+      Trick: if you ask the same way every day, tomorrow you turn
+      it into a skill (module 6) and copy paste is gone.
     xp: 10
+    expected_response_seconds: 60
+    voice_first: true
     success:
       type: claude_tool_call
       match:
         tool: Read
         path_regex: "(00-bandeja|calendario|inbox)"
-    success_title: "Nice! You have the day on one screen"
-    success_sub: "10 XP. Now do the brief before your first meeting."
+    success_title: "Nice. You have the day on one screen"
+    success_sub: "You earned 10 XP. Next up: the pre-meeting brief."
 
   - id: brief-pre-reunion
-    title: Pre-meeting brief
+    title: Brief before a meeting
     body: >
       Two minutes before any meeting, instant brief. Who they are,
-      last contact, open commitments, three things to cover. Your
-      sandbox has Marta as the example, in 01-personas/marta.md.
+      last contact, open commitments, three topics to cover. Your
+      sandbox has people in 01-personas/.
     prompt: |
-      I have a meeting in ten minutes with Marta. Tell me what we
-      last spoke about, open commitments, and three things I
-      should cover today.
+      I have a meeting with Marta in ten minutes. Give me the
+      last thing we talked about, open commitments, and three
+      things I should cover today.
     hint: >
-      Trick: don't ask "prep the meeting". Ask for the concrete
-      pieces. The answer comes back actionable, not a speech.
+      Trick: don't ask "prep the meeting". Ask for the specific
+      pieces. That way the answer is actionable, not a speech.
     xp: 10
+    expected_response_seconds: 60
+    voice_first: true
     success:
       type: claude_tool_call
       match:
         tool: Read
-        path_regex: "01-personas/marta"
-    success_title: "Nice! You walk in prepped"
-    success_sub: "10 XP. What matters is what happens after, let's go."
+        path_regex: "01-personas/(marta|andrea|lucia|cristina|carmen|pablo|maya|ashley|lucy|christine|caroline|peter)"
+    success_title: "Nice. You're ready for the meeting"
+    success_sub: "You earned 10 XP. What matters is what happens after."
+    role_variants:
+      ventas:
+        body: >
+          You meet with Marta (she leads your team). Ask Claude
+          for last contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Marta in ten minutes. Give me last
+          contact, open commitments, and three things I should
+          cover today.
+      marketing:
+        body: >
+          You meet with Lucia (marketing). Ask Claude for last
+          contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Lucia in ten minutes. Give me last
+          contact, open commitments, and three things I should
+          cover today.
+      tecnologia:
+        body: >
+          You meet with a peer from tech. Ask Claude for last
+          contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Marta in ten minutes about a shared
+          topic. Give me last contact, open commitments, and three
+          things I should cover today.
+      producto:
+        body: >
+          You meet with Pablo (product). Ask Claude for last
+          contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Pablo in ten minutes. Give me last
+          contact, open commitments, and three things I should
+          cover today.
+      finanzas:
+        body: >
+          You meet with Cristina (finance). Ask Claude for last
+          contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Cristina in ten minutes. Give me
+          last contact, open commitments, and three things I should
+          cover today.
+      rrhh:
+        body: >
+          You meet with Andrea (HR). Ask Claude for last contact,
+          open commitments, three topics.
+        prompt: |
+          I have a meeting with Andrea in ten minutes. Give me last
+          contact, open commitments, and three things I should
+          cover today.
+      legal:
+        body: >
+          You meet with Carmen (legal). Ask Claude for last
+          contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Carmen in ten minutes. Give me last
+          contact, open commitments, and three things I should
+          cover today.
+      estrategia:
+        body: >
+          You meet with Pablo Sastre (CEO, strategy). Ask Claude
+          for last contact, open commitments, three topics.
+        prompt: |
+          I have a meeting with Pablo Sastre in ten minutes. Give
+          me last contact, open commitments, and three things I
+          should cover today.
 
   - id: registro-post-reunion
-    title: Capture without writing
+    title: Log without writing
     body: >
-      Two minutes after the meeting, you tell Claude what
-      happened in one sentence and it files in the right place.
-      You don't write notes, you talk and it saves.
+      Two minutes after the meeting, tell Claude what happened in
+      one sentence and it files it in the right place. You don't
+      write notes, you talk and they get saved.
     prompt: |
-      Just spoke with Marta. I asked her for the proposal by
-      Friday, she asked me for the revised contract. File it on
-      her sheet and remind me tomorrow.
+      Just finished with Marta. I asked for the proposal by Friday,
+      she asked for the revised contract. File it in her page and
+      remind me tomorrow.
     hint: >
-      Trick: say it in order of who owes what. "I asked for X,
-      she asked for Y." That way you never forget what you have
-      to deliver.
+      Trick: say it in the order of who owes whom. "I asked X, she
+      asked Y." That way you never forget what you owe.
     xp: 10
+    expected_response_seconds: 45
+    voice_first: true
     success:
       type: claude_tool_call
       match:
         tool: Edit
-        path_regex: "01-personas/marta"
-    success_title: "Nice! The meeting is captured"
-    success_sub: "10 XP. One left: close the day."
+        path_regex: "01-personas/(marta|andrea|lucia|cristina|carmen|pablo|maya|ashley|lucy|christine|caroline|peter)"
+    success_title: "Nice. The meeting is logged"
+    success_sub: "You earned 10 XP. Last, end of day."
 
   - id: cierre-del-dia
     title: Close the day
     body: >
-      Last question before you shut down. What did you close,
-      what did you move, what's open, plus a brief ready to open
-      first thing tomorrow.
+      Last question before you turn off. What you closed, what you
+      moved, what's pending, and a brief ready for tomorrow first
+      thing.
     prompt: |
-      Summarize the day. What I closed, what I moved, what's
-      pending. And prep tomorrow's brief for first thing.
+      Summarize the day. What I closed, what I moved, what's left.
+      And prep tomorrow morning's brief.
     hint: >
-      Trick: this summary is the input for tomorrow's morning
-      brief. Each day starts knowing where you left off, without
+      Trick: this summary is the input for the next morning's
+      brief. Every day starts knowing where you stopped, without
       you having to remember.
     xp: 10
+    expected_response_seconds: 60
+    voice_first: true
     success:
       type: claude_prompt_sent
-      match_regex: "(?i)(summarize|close|brief).{0,40}(day|tomorrow)"
-    success_title: "Nice! The day is closed"
-    success_sub: "10 XP. Three weeks of this and it's a habit."
+      match_regex: "(?i)(summariz|summar|close|brief).{0,40}(day|tomorrow|morning)"
+    success_title: "Nice. The day is closed"
+    success_sub: "You earned 10 XP. Three weeks of this and it's routine."
 
 on_complete:
   total_xp: 40
   takeaways:
     - Start the day with the brief. Same question every morning.
     - Two-minute brief before every meeting.
-    - Capture immediately after, by talking, not writing.
-    - Close with what's left and tomorrow's brief already done.
+    - Log right after, by talking, not typing.
+    - Close with what's left and tomorrow's brief already prepped.
   next_module: m5-subagentes
-  milestone_screen: hito-dia7   # triggers the milestone screen from mock-hito-dia7
+  milestone_screen: hito-dia7
   trigger_signup: false

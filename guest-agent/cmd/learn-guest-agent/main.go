@@ -69,15 +69,24 @@ func main() {
 	log.Printf("handshake sent")
 
 	// Fan-in channel; watchers push events, writer serializes.
-	events := make(chan event, 64)
+	events := make(chan event, 256)
 
 	go watchProcesses(events)
 	go watchPorts(events)
+	go watchClaudeWrap(events, "/run/learn/claude-wrap.sock")
+
+	filePaths := make(chan []string, 4)
+	regexSpecs := make(chan []fileWatchSpec, 4)
+	go watchFiles(events, filePaths)
+	go watchFileContentsRegex(events, regexSpecs)
+
+	// Config reader: the control plane can push lesson predicate sets to us
+	// over the same vsock connection as JSON frames with type "config".
+	go readConfig(conn, filePaths, regexSpecs)
 
 	for e := range events {
 		if err := enc.Encode(e); err != nil {
 			log.Printf("encode event: %v; reconnecting...", err)
-			// Reconnect loop
 			conn.Close()
 			for {
 				time.Sleep(2 * time.Second)
@@ -86,11 +95,38 @@ func main() {
 				if reErr == nil {
 					enc = json.NewEncoder(conn)
 					_ = enc.Encode(event{Type: "hello", TS: nowRFC3339(), Session: sessionToken, Payload: map[string]any{"hostname": mustHostname(), "reconnect": true}})
+					go readConfig(conn, filePaths, regexSpecs)
 					break
 				}
 				log.Printf("redial: %v", reErr)
 			}
 		}
+	}
+}
+
+// readConfig decodes messages the control plane pushes down the vsock
+// connection. Today the only recognized type is "config" with a payload
+// containing file_watches (string array) and regex_watches (fileWatchSpec
+// array). Unknown types are silently ignored for forward compatibility.
+func readConfig(conn net.Conn, filePaths chan<- []string, regexSpecs chan<- []fileWatchSpec) {
+	type configMsg struct {
+		Type    string `json:"type"`
+		Payload struct {
+			FileWatches  []string        `json:"file_watches"`
+			RegexWatches []fileWatchSpec `json:"regex_watches"`
+		} `json:"payload"`
+	}
+	dec := json.NewDecoder(conn)
+	for {
+		var m configMsg
+		if err := dec.Decode(&m); err != nil {
+			return
+		}
+		if m.Type != "config" {
+			continue
+		}
+		filePaths <- m.Payload.FileWatches
+		regexSpecs <- m.Payload.RegexWatches
 	}
 }
 

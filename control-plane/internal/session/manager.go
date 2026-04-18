@@ -225,6 +225,7 @@ func (m *Manager) Count() int {
 var (
 	ErrAtCapacity = errors.New("session pool at capacity")
 	ErrNotFound   = errors.New("session not found")
+	ErrNoGuest    = errors.New("no guest-agent attached")
 )
 
 func cleanup(vmDir, tap string, alloc *netalloc.Allocator, ip netip.Addr) {

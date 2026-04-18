@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"test_m2_3","cwd":"/home/learner/empresa-prueba","model":"claude-sonnet-4-5"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"demasiado largo, hazlo en dos frases y con tono informal"}]}}
+{"type":"assistant","message":{"id":"msg_1","role":"assistant","content":[{"type":"text","text":"Ventas lleva el B2B de la empresa, 40 cuentas en el pipeline y casi medio plan concentrado en tres. Objetivo: 2.4M anuales, y a Marta le preocupa la competencia en industrial."}]}}
+{"type":"result","subtype":"success","session_id":"test_m2_3","duration_ms":1210,"result":"ok","num_turns":1}
