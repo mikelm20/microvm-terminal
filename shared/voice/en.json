@@ -35,6 +35,16 @@
       "rrhh": "HR",
       "legal": "Legal",
       "estrategia": "Strategy"
+    },
+    "taglines": {
+      "ventas": "Emails, proposals, closes.",
+      "marketing": "Campaigns, copy, analysis.",
+      "tecnologia": "Code, reviews, debugging.",
+      "producto": "Specs, roadmap, discovery.",
+      "finanzas": "Reports, models, books.",
+      "rrhh": "Processes, policies, people.",
+      "legal": "Contracts, compliance, risk.",
+      "estrategia": "Markets, calls, vision."
     }
   },
   "path": {
@@ -111,7 +121,13 @@
   },
   "settings": {
     "title": "Settings",
+    "done": "Done",
+    "section_account": "ACCOUNT",
+    "section_preferences": "PREFERENCES",
+    "section_data": "DATA",
     "lang": "Language",
+    "lang_es": "Spanish",
+    "lang_en": "English",
     "department": "Department",
     "haptics": "Haptics",
     "push": "Notifications",

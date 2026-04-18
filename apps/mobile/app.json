@@ -1,0 +1,85 @@
+{
+  "expo": {
+    "name": "learn",
+    "slug": "learn",
+    "scheme": "learn",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#6e2608"
+    },
+    "ios": {
+      "bundleIdentifier": "com.example.learn",
+      "supportsTablet": false,
+      "associatedDomains": ["applinks:learn.example.com"],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Toma una foto para pasarsela a Claude.",
+        "NSMicrophoneUsageDescription": "Dicta tu turno a Claude en lugar de escribir.",
+        "NSSpeechRecognitionUsageDescription": "Convertimos tu voz en texto para mandarselo a Claude.",
+        "NSPhotoLibraryUsageDescription": "Elige una imagen para compartir con Claude."
+      }
+    },
+    "android": {
+      "package": "com.example.learn",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6e2608"
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "learn" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "learn.example.com", "pathPrefix": "/auth/callback" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#ff9b5a"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Toma una foto para pasarsela a Claude."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Elige una imagen para compartir con Claude.",
+          "cameraPermission": "Toma una foto para pasarsela a Claude."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080"
+    }
+  }
+}
