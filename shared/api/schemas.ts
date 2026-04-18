@@ -181,7 +181,7 @@ export const AttachImageResponse = z.object({
 });
 export type AttachImageResponse = z.infer<typeof AttachImageResponse>;
 
-// public (no auth) shapes used by apps/web
+// public (no auth) shapes consumed by the separate marketing/proof web (learn-landing)
 export const PublicProfileResponse = z.object({
   uuid: z.string().uuid(),
   name: z.string().nullable(),

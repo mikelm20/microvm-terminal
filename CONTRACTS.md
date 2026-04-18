@@ -62,15 +62,8 @@ Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estra
       app.json
       package.json
       tsconfig.json
-    web/                       (Next.js 15. Owned by Agent-Proof.)
-      app/
-      components/
-      lib/
-      public/
-      next.config.js
-      package.json
-      tailwind.config.js
-      tsconfig.json
+    (web lives in its own repo: learn-landing. Landing and app
+    are intentionally decoupled; this monorepo is API + mobile only.)
 
   shared/                      (TS packages, imported as @learn/shared/*)
     api/                       (Zod schemas + TS types for HTTP + WS)
@@ -479,7 +472,7 @@ Clients map `code` to a localized voice-table entry, never show `message` to use
 The JSON file `tokens.json` is the ONLY source of truth for colors, type, spacing, motion, shadow, radius. Do not hard-code values anywhere else. Agent-Tooling emits:
 
 - `tokens.ts` (typed TS export)
-- `tailwind-preset.js` (consumed by `apps/web/tailwind.config.js` and `apps/mobile` NativeWind config)
+- `tailwind-preset.js` (consumed by `apps/mobile` NativeWind config and by the separate marketing/proof web repo)
 
 Initial values are committed at scaffold time. Evolving requires architecture review.
 
@@ -585,25 +578,9 @@ All endpoints live under `https://api.learn.example.com` (prod) or `http://local
 | GET | `/healthz` | - | `{ ok: true }` | none | Agent-API |
 | GET | `/metrics` | - | Prometheus text | internal | Agent-API |
 
-Public web endpoints (served by `apps/web`, NOT by control plane):
+Public marketing/proof web (landing, `/p/[uuid]`, `/certificate/[id]`, `/verify/[id]`, OG cards) lives in a separate repo (`learn-landing`) on its own VPS. This monorepo only exposes the read-only control-plane endpoints that the landing repo consumes: `GET /p/:uuid/public`, `GET /certificate/:id/public`. Agent-API ships those alongside the authenticated surface above.
 
-| Method | Path | Purpose | Owner |
-|---|---|---|---|
-| GET | `/:lang` | Landing | Agent-Proof |
-| GET | `/:lang/about` | About | Agent-Proof |
-| GET | `/:lang/status` | Status page | Agent-Proof |
-| GET | `/:lang/changelog` | Changelog | Agent-Proof |
-| GET | `/:lang/p/:uuid` | Shareable proof | Agent-Proof |
-| GET | `/:lang/p/:uuid/m/:lessonId` | Per-module proof | Agent-Proof |
-| GET | `/:lang/certificate/:id` | Premium certificate | Agent-Proof |
-| GET | `/verify/:id` | Certificate verify (no locale segment) | Agent-Proof |
-| GET | `/og/profile/:uuid` | Dynamic OG card | Agent-Proof |
-| GET | `/og/module/:uuid/:lessonId` | Dynamic OG card | Agent-Proof |
-| GET | `/og/certificate/:id` | Dynamic OG card | Agent-Proof |
-| GET | `/robots.txt` | Robots | Agent-Proof |
-| GET | `/sitemap.xml` | Sitemap | Agent-Proof |
-
-The public web calls the control plane (`GET /p/:uuid/public`, `GET /certificate/:id/public`) for data. Agent-API provides those read-only public endpoints in addition to the authenticated set above; see `apps/web/lib/api.ts` for the shape.
+Landing and app are intentionally decoupled: no shared deployment, no shared domain dependency.
 
 ## 6. Postgres schema outline
 
@@ -817,23 +794,9 @@ See section 4.3. Every handler returns either a 2xx with the typed response or a
 
 **Exit**: video on real device: first launch -> role pick -> optional auth -> Path with current node breathing + streak ribbon; mock-forward device clock 48h -> Return card renders correct bucket copy; progress syncs to Postgres visible via psql.
 
-### Agent-Proof
+### Agent-Proof (out of scope for this monorepo)
 
-**Scope**: public Next.js web.
-
-**Owns**:
-- `apps/web/app/**` (all routes per section 5)
-- `apps/web/components/` (shared web components)
-- `apps/web/lib/api.ts` (server-side fetch from control plane)
-- `apps/web/app/og/**/route.tsx` (next/og dynamic OG cards, one per surface)
-- `apps/web/app/robots.ts`, `sitemap.ts`
-- `apps/web/tailwind.config.js` (imports `shared/tokens/tailwind-preset.js`)
-- `apps/web/next.config.js`
-- Certificate verify page with Ed25519 signature check
-
-**Consumes**: `shared/api/schemas`, `shared/tokens`, `shared/voice`.
-
-**Exit**: `pnpm --filter web build && pnpm --filter web start` renders `/es/p/<seeded-uuid>` and `/es/certificate/<seeded-id>` with correct data from the dev Postgres; OG cards unfurl correctly on Slack paste (test link).
+The marketing/proof/certificate web lives in a separate repo (`learn-landing`) on its own VPS. Landing and app are decoupled by design: no shared deployment, no shared domain. The landing repo consumes the public control-plane endpoints (`GET /p/:uuid/public`, `GET /certificate/:id/public`) and imports `@learn/shared-api` + `@learn/shared-tokens` + `@learn/shared-voice` for contract and brand parity.
 
 ## 9. Conventions
 

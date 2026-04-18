@@ -3,7 +3,8 @@
 //
 // Consumed via:
 //   presets: [require("@learn/shared-tokens/tailwind-preset")]
-// in apps/web/tailwind.config.js and the NativeWind config in apps/mobile.
+// in the NativeWind config in apps/mobile, and in the separate marketing/proof
+// web repo (not in this monorepo).
 //
 // CommonJS, because tailwind.config.js in NativeWind is evaluated as CJS.
 

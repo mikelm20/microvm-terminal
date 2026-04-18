@@ -21,7 +21,10 @@
         "NSCameraUsageDescription": "Toma una foto para pasarsela a Claude.",
         "NSMicrophoneUsageDescription": "Dicta tu turno a Claude en lugar de escribir.",
         "NSSpeechRecognitionUsageDescription": "Convertimos tu voz en texto para mandarselo a Claude.",
-        "NSPhotoLibraryUsageDescription": "Elige una imagen para compartir con Claude."
+        "NSPhotoLibraryUsageDescription": "Elige una imagen para compartir con Claude.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       }
     },
     "android": {
@@ -79,7 +82,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBaseUrl": "http://localhost:8080"
+      "apiBaseUrl": "http://<host-ip>:8080"
     }
   }
 }
