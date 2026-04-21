@@ -1,0 +1,116 @@
+# Fase 2, Pillar 2 Context, Lesson 3. EN.
+
+id: p2-contexto-03-claude-md
+module_number: 203
+language: en
+title: CLAUDE.md as permanent memory
+subtitle: What you do not want to repeat every chat, write it once
+description: >
+  The context window gets tidied with /clear. But what really
+  saves you from repeating yourself is a CLAUDE.md file at the
+  project root. Claude reads it automatically on open. You write
+  it, test it, and learn to resume sessions with /resume.
+estimated_minutes: 7
+sandbox: empresa-prueba
+mental_model: >
+  CLAUDE.md is the card you leave on Claude's desk forever. /clear
+  does not wipe it. /compact does not compress it. It is your
+  memory outside the window.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: escribir-claude-md
+    title: Write a project CLAUDE.md
+    body: >
+      Ask Claude to create a CLAUDE.md at the root of empresa-prueba
+      with three things: your role, how you want it to reply, and
+      the two priorities of the moment. Keep it short.
+    prompt: |
+      create a CLAUDE.md at the root with: i work at empresa prueba, i prefer short replies in english with no long lists, and this week my priorities are closing the quarter and preparing the board
+    hint: >
+      Trick: short wins. Ten good lines save more than a hundred
+      messy ones. You can grow it with use.
+    xp: 10
+    expected_response_seconds: 40
+    success:
+      type: file_contents_regex
+      match:
+        path: /home/learner/empresa-prueba/CLAUDE.md
+        regex: "(?is)(empresa\\s+prueba|priorities|short\\s+replies)"
+    success_title: "Nice. Project memory in place"
+    success_sub: "You earn 10 XP. Let us see Claude read it on its own."
+
+  - id: verificar-lectura
+    title: Check Claude reads it
+    body: >
+      /clear to get a clean slate, then ask something without
+      giving personal context. If CLAUDE.md works, it will answer
+      in the tone you asked for and think about your priorities.
+    prompt: |
+      /clear
+    hint: >
+      Trick: /clear first, THEN a new question. That way you make
+      sure any context you notice comes from CLAUDE.md, not from
+      prior history.
+    xp: 10
+    expected_response_seconds: 5
+    success:
+      type: claude_slash_command
+      match:
+        command: clear
+    success_title: "Nice. Clean window, memory intact"
+    success_sub: "You earn 10 XP. Check that Claude still knows who you are."
+
+  - id: preguntar-sin-contexto
+    title: Ask something personal
+    body: >
+      Ask something it can only answer well if it is reading your
+      CLAUDE.md. The reply should come in the tone you set and
+      mention one of your priorities.
+    prompt: |
+      give me a quick plan for my week
+    hint: >
+      Trick: if the reply is generic and skips your priorities,
+      check CLAUDE.md. It may have been saved somewhere else.
+    xp: 10
+    expected_response_seconds: 30
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "CLAUDE.md"
+    success_title: "Nice. It read your card without asking"
+    success_sub: "You earn 10 XP. Last piece: resuming chats across sessions."
+
+  - id: slash-resume
+    title: Resume with /resume
+    body: >
+      You close Claude, come back later, and want to continue
+      where you left off. /resume lists recent sessions to pick
+      from. Great when you split a day and do not want to re-brief.
+    prompt: |
+      /resume
+    hint: >
+      Trick: /resume + CLAUDE.md is the continuity combo. CLAUDE.md
+      handles the "who you are" across all your sessions, /resume
+      handles the "where you left off" for a specific one.
+    xp: 10
+    expected_response_seconds: 15
+    success:
+      type: claude_slash_command
+      match:
+        command: resume
+    success_title: "Nice. You can resume across sessions"
+    success_sub: "You earn 10 XP. Pillar 2 almost done: isolated scope with subagents next."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - CLAUDE.md is memory that survives /clear and /compact.
+    - Claude reads it by itself when you open chat in that folder.
+    - /resume picks up a prior session without re-explaining.
+  next_module: p2-contexto-04-subagentes

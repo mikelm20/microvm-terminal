@@ -1,0 +1,95 @@
+# Fase 2, Pilar 3 Prompting, Leccion 3. Version ES.
+#
+# Ultima leccion del modulo. Descomposicion de tareas grandes y
+# composicion libre. Mascado bajisimo: el primer paso enuncia la
+# heuristica, los dos siguientes el usuario construye entero.
+# Es el paso natural al Pilar 3 de autonomia de Fase 3.
+#
+# Predicados:
+#   - claude_prompt_sent: { match_regex }
+#   - claude_tool_call:   { tool: Task }
+
+id: p3-prompting-03-descomponer
+module_number: 303
+language: es
+title: Descomponer tareas grandes
+subtitle: Divide el trabajo, no el prompt. Cierre de Fase 2.
+description: >
+  Cuando el trabajo pesa, la tentacion es escribir un prompt
+  enorme. Funciona peor. Lo que funciona es partir la tarea en
+  piezas pequenas, cada una con su prompt corto y su chequeo.
+  Cierre del modulo: compones tu mismo, sin mascado.
+estimated_minutes: 8
+sandbox: empresa-prueba
+mental_model: >
+  No es "un gran prompt". Es "una cadena de prompts pequenos".
+  Cada paso entrega algo visible. Si uno falla, rehaces ese solo.
+  Es como cocinar por pasos y no por olla unica.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: identificar-tarea
+    title: Elige una tarea grande y partela en tres
+    body: >
+      Primero, enuncia que trabajo real tienes pendiente (informe,
+      propuesta, auditoria, plan). Segundo, en el MISMO prompt,
+      proponle a Claude dividirlo en tres piezas entregables y
+      que te devuelva solo la lista de tres, sin ejecutarla.
+    hint: >
+      Truco: "devuelveme solo la lista, no ejecutes aun" es la
+      frase clave. Obliga a Claude a planificar antes de actuar.
+    xp: 10
+    expected_response_seconds: 45
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(tres|3).{0,60}(piezas|partes|entregables|pasos|secciones)"
+    success_title: "Bien. Tienes el plan antes de ejecutar"
+    success_sub: "Ganas 10 XP. Ahora vas a ejecutar la primera pieza sola."
+
+  - id: ejecutar-pieza-1
+    title: Ejecuta solo la primera pieza
+    body: >
+      Sin prompt dado. Tu eliges la primera pieza del plan y le
+      pides a Claude que la haga. Aplica la regla de oro:
+      contexto, objetivo, tono. Si encaja, usa un subagente para
+      que la lectura pesada no te ensucie el contexto.
+    hint: >
+      Truco: si la pieza implica leer muchos archivos, delega a
+      un subagente con Task. Tu sesion principal queda limpia
+      para la pieza 2 y 3.
+    xp: 10
+    expected_response_seconds: 120
+    success:
+      type: claude_prompt_sent
+    success_title: "Bien. Primera pieza entregada"
+    success_sub: "Ganas 10 XP. Sigue con la segunda, mismo patron."
+
+  - id: iterar-libre
+    title: Cierra las dos piezas restantes, tu estilo
+    body: >
+      Ultima: ejecuta la pieza 2, luego la pieza 3. Entre pieza
+      y pieza, usa /compact si el contexto se te carga, o /clear
+      si cambias de tema dentro del mismo plan. Componiendo
+      libre. Esto es lo que haras cada dia cuando termines Fase 2.
+    hint: >
+      Truco: es normal que se te olvide /compact la primera vez.
+      Si notas a Claude mas lento o el /status alto, es tu senal.
+    xp: 10
+    expected_response_seconds: 240
+    success:
+      type: claude_prompt_sent
+    success_title: "Bien. Has cerrado una tarea grande en piezas"
+    success_sub: "Ganas 10 XP. Fase 2 completada. Estas listo para trabajar sin andamio."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - Partir la tarea antes de escribir el prompt siempre supera el prompt gigante.
+    - Cada pieza entrega algo visible, por eso se puede iterar por pieza.
+    - Combinar con /compact, /clear y subagentes mantiene el ritmo.
+  next_module: null
+  milestone_screen: fase-2-completa

@@ -1,0 +1,94 @@
+# Fase 2, Pillar 1 Commands, Lesson 2. EN.
+#
+# Open interactive claude, use /help to list commands, exit with /exit.
+# Still high mascado: slash commands are a closed vocabulary, better to
+# show them literal.
+
+id: p1-comandos-02-interactivo
+module_number: 102
+language: en
+title: Open a conversation with claude
+subtitle: Interactive mode, /help to orient, /exit to leave
+description: >
+  Now you open a real conversation. Just type claude and you enter
+  a prompt that remembers what you say while you are inside. /help
+  lists the available commands. /exit gets you out clean.
+estimated_minutes: 4
+sandbox: empresa-prueba
+mental_model: >
+  Interactive claude is the "long coffee" with Claude. You sit
+  down, chat, it keeps the thread. /help is the menu on the bar.
+  /exit is standing up from the stool.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+
+steps:
+
+  - id: abrir-claude
+    title: Open interactive mode
+    body: >
+      Type the command as is and Enter. The terminal will change:
+      a different prompt shows up, with a frame or an icon,
+      because Claude is inside waiting for you.
+    prompt: |
+      claude
+    hint: >
+      No args, just "claude" and Enter. To close it emergency style,
+      Ctrl+C twice or /exit. We will see /exit in a moment.
+    xp: 10
+    expected_response_seconds: 15
+    success:
+      type: process_started
+      match:
+        name: claude
+    success_title: "You are in. Claude is waiting"
+    success_sub: "You earn 10 XP. Now let us ask Claude itself for help."
+
+  - id: slash-help
+    title: Ask what commands exist
+    body: >
+      Slash commands are shortcuts Claude executes without going
+      through the model. /help lists them. Do not memorize them,
+      just know they are there.
+    prompt: |
+      /help
+    hint: >
+      Trick: /help is the front door to everything. If you ever
+      forget the exact name, /help and scan.
+    xp: 10
+    expected_response_seconds: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: help
+    success_title: "Nice. You saw the full menu"
+    success_sub: "You earn 10 XP. You know where to look when lost."
+
+  - id: slash-exit
+    title: Exit clean with /exit
+    body: >
+      When you are done, /exit closes Claude and returns the
+      terminal. Cleaner than Ctrl+C: it saves the transcript and
+      frees resources.
+    prompt: |
+      /exit
+    hint: >
+      Trick: from now on in any lesson, if you get stuck you can
+      /exit and reopen claude. The transcript is saved.
+    xp: 10
+    expected_response_seconds: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: exit
+    success_title: "Nice. You exited clean"
+    success_sub: "You earn 10 XP. You can open, ask for help, and close. Basic mechanic done."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - Plain claude opens an interactive chat that remembers.
+    - /help lists every slash command available.
+    - /exit closes clean and saves the transcript.
+  next_module: p1-comandos-03-discovery

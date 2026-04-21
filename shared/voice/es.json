@@ -160,5 +160,53 @@
     "launch": "Claude se tropezo al llegar.",
     "unknown": "Algo raro. Damelo otra vez.",
     "auth": "Vuelve a entrar para seguir."
+  },
+  "taller": {
+    "phase_title": "Terminal guiada",
+    "phase_subtitle": "De comandos mascados a componer libre",
+    "pillars": {
+      "comandos": {
+        "title": "Comandos basicos",
+        "subtitle": "La mecanica: prompt, interactivo, descubrir",
+        "label": "Pilar 1",
+        "intro": "Empieza por lo mecanico: un prompt, una conversacion, los tres comandos de descubrimiento."
+      },
+      "context": {
+        "title": "Manejar el contexto",
+        "subtitle": "La ventana que Claude tiene en su mesa",
+        "label": "Pilar 2",
+        "intro": "Ver, limpiar, comprimir y extender el contexto. Memoria permanente y delegacion."
+      },
+      "prompting": {
+        "title": "Prompting de calidad",
+        "subtitle": "Contexto, objetivo, tono. Ejemplos y critica. Descomponer.",
+        "label": "Pilar 3",
+        "intro": "Como pides, responde. Tres tecnicas que todo el mundo puede aplicar ya."
+      }
+    },
+    "mascado_level": {
+      "high": "Copia el comando tal cual",
+      "medium": "Adapta el prompt a tu caso",
+      "low": "Componlo tu"
+    },
+    "step_feedback": {
+      "copied_prompt": "Prompt copiado, manda cuando quieras.",
+      "typed_own": "Bien, lo compones tu solo.",
+      "slash_done": "Comando visto, sigues.",
+      "read_detected": "Claude leyo el archivo que pediste.",
+      "tool_call_running": "Claude esta trabajando con una herramienta.",
+      "window_checked": "Has mirado tu ventana de contexto.",
+      "window_saved": "Tu contexto sigue ligero."
+    },
+    "pillar_complete": {
+      "comandos": "Mecanica basica hecha. Ya abres, preguntas y cierras.",
+      "context": "Sabes cuidar la mesa. Limpiar, comprimir, recordar, delegar.",
+      "prompting": "Compones libre. Fase 2 cerrada."
+    },
+    "phase_complete": {
+      "title": "Fase 2 completa",
+      "subtitle": "De comando mascado a composicion libre, hecho.",
+      "cta": "Siguiente fase"
+    }
   }
 }

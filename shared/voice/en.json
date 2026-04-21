@@ -160,5 +160,53 @@
     "launch": "Claude stumbled arriving.",
     "unknown": "Something odd. Give it to me again.",
     "auth": "Sign back in to continue."
+  },
+  "taller": {
+    "phase_title": "Guided terminal",
+    "phase_subtitle": "From scaffolded commands to free composition",
+    "pillars": {
+      "comandos": {
+        "title": "Core commands",
+        "subtitle": "The mechanic: prompt, interactive, discovery",
+        "label": "Pillar 1",
+        "intro": "Start with the mechanic: one prompt, one conversation, the three discovery commands."
+      },
+      "context": {
+        "title": "Handle context",
+        "subtitle": "The window on Claude's desk",
+        "label": "Pillar 2",
+        "intro": "See, clean, compress and extend context. Permanent memory and delegation."
+      },
+      "prompting": {
+        "title": "Quality prompting",
+        "subtitle": "Context, goal, tone. Examples and critique. Decompose.",
+        "label": "Pillar 3",
+        "intro": "How you ask shapes the answer. Three techniques anyone can use right away."
+      }
+    },
+    "mascado_level": {
+      "high": "Copy the command as is",
+      "medium": "Adapt the prompt to your case",
+      "low": "Compose it yourself"
+    },
+    "step_feedback": {
+      "copied_prompt": "Prompt copied, send when ready.",
+      "typed_own": "Nice, you composed that yourself.",
+      "slash_done": "Command seen, moving on.",
+      "read_detected": "Claude read the file you asked for.",
+      "tool_call_running": "Claude is using a tool.",
+      "window_checked": "You just checked your context window.",
+      "window_saved": "Your context stays light."
+    },
+    "pillar_complete": {
+      "comandos": "Basic mechanic done. You open, ask, close.",
+      "context": "You mind the desk. Clean, compress, remember, delegate.",
+      "prompting": "You compose free. Fase 2 done."
+    },
+    "phase_complete": {
+      "title": "Fase 2 complete",
+      "subtitle": "From scaffolded to free composition, done.",
+      "cta": "Next phase"
+    }
   }
 }

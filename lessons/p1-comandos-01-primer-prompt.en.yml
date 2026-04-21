@@ -1,0 +1,96 @@
+# Fase 2, Pillar 1 Commands, Lesson 1. EN version.
+#
+# Entry lesson: one-shot prompt with claude --print. High mascado: the
+# prompt is shown literally; the learner copies it or types it to see the
+# basic mechanic respond. Preps the ground for interactive mode next.
+
+id: p1-comandos-01-primer-prompt
+module_number: 101
+language: en
+title: Your first one-line prompt
+subtitle: One command, one answer, no conversation open
+description: >
+  We start with the simplest shape. claude followed by your question
+  in quotes returns an answer and exits. Good for quick shots: a
+  sentence, a calc, a question in passing. No session, no history,
+  no noise.
+estimated_minutes: 5
+sandbox: empresa-prueba
+mental_model: >
+  claude --print is "ask and exit". Like catching a colleague in the
+  hallway. It does not open a conversation and does not remember.
+  One way, one way back.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+
+steps:
+
+  - id: pregunta-directa
+    title: Send your first one-line question
+    body: >
+      Copy the command below as is and hit Enter. You will see
+      Claude reply in the same terminal, without opening any
+      conversation. One question, one answer, done.
+    prompt: |
+      claude --print "in one sentence, what is claude code"
+    hint: >
+      Exact shape: claude --print "your question". Quotes are
+      required. --print is also -p, four fewer letters.
+    xp: 10
+    expected_response_seconds: 20
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)claude\\s*code"
+    success_title: "Nice. First prompt out the door"
+    success_sub: "You earn 10 XP. You saw you do not need to open a chat to talk to it."
+
+  - id: pregunta-con-archivo
+    title: Ask it to read a file
+    body: >
+      Same shape, but now you ask it to READ something before
+      answering. Claude opens the file, processes it, replies.
+      You will see a tool call card: "Read 01-ventas/..." next to
+      the terminal.
+    prompt: |
+      claude --print "read 01-ventas/README.md and in two sentences tell me what this team does"
+    hint: >
+      Trick: the path goes inside the prompt. Claude does not guess
+      where to look, you tell it.
+    xp: 10
+    expected_response_seconds: 30
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "01-ventas"
+    success_title: "Nice. Claude read the file and answered"
+    success_sub: "You earn 10 XP. You chained reading and replying in one command."
+
+  - id: formato-json
+    title: Ask for the answer in JSON
+    body: >
+      The --output-format json flag makes the answer come out
+      structured, useful if another program will read it. You will
+      just see it today so you know it exists. The day you need it,
+      you have already touched it.
+    prompt: |
+      claude --print --output-format json "give me three short ideas for a sales demo"
+    hint: >
+      Trick: json for pipelines, plain text for humans. Today we are
+      humans, but we want to know the other mode is there.
+    xp: 10
+    expected_response_seconds: 25
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(demo|ideas|sales)"
+    success_title: "Nice. You saw the structured reply"
+    success_sub: "You earn 10 XP. Ready to open a real conversation next lesson."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - claude --print "question" returns an answer and exits.
+    - You can ask it to read files inside the same command.
+    - --output-format json exists for pipelines, not for you today.
+  next_module: p1-comandos-02-interactivo
