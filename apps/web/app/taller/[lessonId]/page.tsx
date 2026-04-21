@@ -1,6 +1,9 @@
 import Link from "next/link";
-import Terminal from "../../../components/Terminal";
-import WizardSidebar from "../../../components/WizardSidebar";
+import { notFound } from "next/navigation";
+import LessonRuntime from "../../../components/LessonRuntime";
+import { loadLessonById, loadPillars } from "../../../lib/registry";
+
+export const dynamic = "force-dynamic";
 
 type Params = { lessonId: string };
 
@@ -10,6 +13,27 @@ export default async function TallerLessonPage({
   params: Promise<Params>;
 }) {
   const { lessonId } = await params;
+  const lesson = await loadLessonById(lessonId);
+  if (!lesson) {
+    notFound();
+  }
+
+  // Resolve pillar membership + next lesson in the same pillar for the
+  // completion moment. Missing registry simply yields empty pillars and the
+  // header falls back to "Terminal guiada".
+  const pillars = await loadPillars();
+  const pillar = pillars.find((p) => p.lessons.some((l) => l.id === lesson.id));
+  const pillarTitle = pillar?.title ?? "Terminal guiada";
+  let nextLessonId: string | null = null;
+  let nextLessonTitle: string | null = null;
+  if (pillar) {
+    const idx = pillar.lessons.findIndex((l) => l.id === lesson.id);
+    const next = idx >= 0 ? pillar.lessons[idx + 1] : undefined;
+    if (next) {
+      nextLessonId = next.id;
+      nextLessonTitle = next.title;
+    }
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 py-6">
@@ -18,26 +42,29 @@ export default async function TallerLessonPage({
           Inicio
         </Link>
         <span className="mx-2">/</span>
-        <span>Taller</span>
+        <Link href="/taller" className="hover:text-ink-primary">
+          Taller
+        </Link>
         <span className="mx-2">/</span>
-        <span className="text-ink-primary">{lessonId}</span>
+        <span className="text-ink-primary">{lesson.title}</span>
       </nav>
 
       <header className="flex flex-col gap-1">
         <span className="text-sm uppercase tracking-widest text-ink-tertiary">
-          Terminal guiada
+          {pillarTitle}
         </span>
-        <h1 className="text-2xl font-semibold">Leccion {lessonId}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{lesson.title}</h1>
+        {lesson.subtitle ? (
+          <p className="text-sm text-ink-secondary">{lesson.subtitle}</p>
+        ) : null}
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 lg:flex-row">
-        <section className="order-1 flex min-h-[360px] flex-1 flex-col rounded-card border border-surface-divider bg-surface-sunken p-3 lg:order-1">
-          <Terminal lessonId={lessonId} />
-        </section>
-        <aside className="order-2 flex w-full flex-col gap-3 rounded-card border border-surface-divider bg-surface-raised p-4 lg:order-2 lg:w-96">
-          <WizardSidebar lessonId={lessonId} />
-        </aside>
-      </div>
+      <LessonRuntime
+        lesson={lesson}
+        pillarTitle={pillarTitle}
+        nextLessonId={nextLessonId}
+        nextLessonTitle={nextLessonTitle}
+      />
     </main>
   );
 }
