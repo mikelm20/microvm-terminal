@@ -82,9 +82,10 @@ func (s *Signer) IdentityCookieFor(id uuid.UUID) string {
 }
 
 // IdentityHTTPCookie returns an http.Cookie with the signed value. secure
-// controls the Secure flag (disable for local http dev).
-func (s *Signer) IdentityHTTPCookie(id uuid.UUID, secure bool) *http.Cookie {
-	return &http.Cookie{
+// controls the Secure flag (disable for local http dev). domain, when
+// non-empty, scopes the cookie across subdomains (e.g. ".example.com").
+func (s *Signer) IdentityHTTPCookie(id uuid.UUID, secure bool, domain string) *http.Cookie {
+	c := &http.Cookie{
 		Name:     IdentityCookie,
 		Value:    s.IdentityCookieFor(id),
 		Path:     "/",
@@ -93,6 +94,10 @@ func (s *Signer) IdentityHTTPCookie(id uuid.UUID, secure bool) *http.Cookie {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(IdentityTTL.Seconds()),
 	}
+	if domain != "" {
+		c.Domain = domain
+	}
+	return c
 }
 
 // MintOrReattest is the POST /identity business logic. If supplied is nil

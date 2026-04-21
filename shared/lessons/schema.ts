@@ -74,6 +74,12 @@ export const LessonStepSchema = z.object({
   voice_first: z.boolean().optional(),
   requires_camera: z.boolean().optional(),
   role_variants: z.record(DepartmentSchema, RoleVariantSchema).optional(),
+  // Per-step system prompt injected via claude-wrap's -system-prompt-file.
+  // When present, claude is primed with this text so a specific semantic
+  // input deterministically produces the expected teaching output. Empty
+  // or missing means free-form Claude. Used first by F2 Lab substeps where
+  // the canonical answer must be stable across runs.
+  system_prompt: z.string().optional(),
 });
 export type LessonStep = z.infer<typeof LessonStepSchema>;
 

@@ -126,8 +126,8 @@ func (h *authHandler) Claim(w http.ResponseWriter, r *http.Request) {
 
 	// Set both cookies: the authenticated session and a refreshed identity
 	// cookie pointing to the claimed UUID.
-	http.SetCookie(w, auth.SessionCookie(sessionToken, h.deps.SecureCookies))
-	http.SetCookie(w, h.deps.Signer.IdentityHTTPCookie(identityID, h.deps.SecureCookies))
+	http.SetCookie(w, auth.SessionCookie(sessionToken, h.deps.SecureCookies, h.deps.CookieDomain))
+	http.SetCookie(w, h.deps.Signer.IdentityHTTPCookie(identityID, h.deps.SecureCookies, h.deps.CookieDomain))
 
 	writeJSON(w, http.StatusOK, apitypes.ClaimAccountResponse{
 		UUID:         identityID.String(),
@@ -141,6 +141,6 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(auth.LearnSessionCookie); err == nil && c.Value != "" {
 		_ = h.deps.Store.DeleteAuthSession(r.Context(), c.Value)
 	}
-	http.SetCookie(w, auth.ClearSessionCookie(h.deps.SecureCookies))
+	http.SetCookie(w, auth.ClearSessionCookie(h.deps.SecureCookies, h.deps.CookieDomain))
 	writeJSON(w, http.StatusOK, apitypes.OKResponse{Ok: true})
 }

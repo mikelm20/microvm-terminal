@@ -70,6 +70,11 @@ RUN install -d -o learner -g learner -m 0700 /home/learner/.claude && \
     chown learner:learner /home/learner/.claude/settings.json /home/learner/.claude/.claude.json && \
     chmod 0640 /home/learner/.claude/settings.json /home/learner/.claude/.claude.json
 
+# Base tutor CLAUDE.md auto-loaded by Claude Code at session start.
+# Per-lesson priming is layered on top via claude-wrap --append-system-prompt.
+COPY --chown=learner:learner learn-claude.md /home/learner/.claude/CLAUDE.md
+RUN chmod 0640 /home/learner/.claude/CLAUDE.md
+
 # Empresa Prueba sandbox: fictional company every learner shares.
 # Lessons in lessons/m{2..8}-*.yml assume this layout exists at
 # /home/learner/empresa-prueba on first boot.

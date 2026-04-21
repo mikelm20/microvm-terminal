@@ -43,7 +43,7 @@ func (h *identityHandler) Mint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie := h.deps.Signer.IdentityHTTPCookie(id, h.deps.SecureCookies)
+	cookie := h.deps.Signer.IdentityHTTPCookie(id, h.deps.SecureCookies, h.deps.CookieDomain)
 	http.SetCookie(w, cookie)
 
 	writeJSON(w, http.StatusOK, apitypes.MintIdentityResponse{

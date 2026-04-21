@@ -52,8 +52,10 @@ func ValidateSession(ctx context.Context, store *db.Store, rawToken string) (uui
 
 // SessionCookie returns an http.Cookie for the given raw session token.
 // secure controls whether the Secure flag is set; set to false in local dev.
-func SessionCookie(rawToken string, secure bool) *http.Cookie {
-	return &http.Cookie{
+// domain, when non-empty, sets the Domain attribute so the cookie is shared
+// across subdomains (e.g. ".example.com").
+func SessionCookie(rawToken string, secure bool, domain string) *http.Cookie {
+	c := &http.Cookie{
 		Name:     LearnSessionCookie,
 		Value:    rawToken,
 		Path:     "/",
@@ -62,11 +64,17 @@ func SessionCookie(rawToken string, secure bool) *http.Cookie {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(SessionTTL.Seconds()),
 	}
+	if domain != "" {
+		c.Domain = domain
+	}
+	return c
 }
 
-// ClearSessionCookie returns an expired session cookie (for logout).
-func ClearSessionCookie(secure bool) *http.Cookie {
-	return &http.Cookie{
+// ClearSessionCookie returns an expired session cookie (for logout). domain
+// must match the Domain used when the cookie was minted, otherwise the
+// browser keeps the live cookie alongside the expired one.
+func ClearSessionCookie(secure bool, domain string) *http.Cookie {
+	c := &http.Cookie{
 		Name:     LearnSessionCookie,
 		Value:    "",
 		Path:     "/",
@@ -75,4 +83,8 @@ func ClearSessionCookie(secure bool) *http.Cookie {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	}
+	if domain != "" {
+		c.Domain = domain
+	}
+	return c
 }

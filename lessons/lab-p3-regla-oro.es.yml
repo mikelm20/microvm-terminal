@@ -1,0 +1,78 @@
+# F2 Lab, Pilar 3, Substep "regla-oro". Version ES.
+#
+# Mapea al substep `regla-oro` en learn-landing components/levels/lab/data.ts
+# (LAB_LEVELS[2].substeps[0]). Una sola tarjeta: pide contexto + objetivo +
+# tono en un solo prompt y Claude responde con tres bullets ejecutivos de
+# Q1. El output es determinista por el system_prompt para que la primera
+# experiencia live-Claude del learner sea impecable.
+#
+# Pairs con: lab-p3-regla-oro.en.yml.
+id: lab-p3-regla-oro
+module_number: 3001
+language: es
+title: La regla de oro
+subtitle: Contexto + objetivo + tono en un solo prompt
+description: >
+  Primer prompt del Lab que habla con Claude de verdad. Reune los tres
+  ingredientes (contexto, objetivo, tono) en una sola frase y recibe una
+  respuesta estructurada en bullets.
+estimated_minutes: 2
+sandbox: empresa-prueba
+mental_model: >
+  Un prompt bueno no es mas largo, es mejor estructurado. Pegas el
+  contexto, dices el objetivo, pides el tono. En ese orden.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+  - id: regla-oro
+    title: Contexto, objetivo, tono
+    body: >
+      Redacta un prompt que incluya los tres ingredientes: quien eres y
+      de que va esto (contexto), que quieres (objetivo) y como lo quieres
+      escrito (tono: ejecutivo, breve, con bullets, con cifras, etc).
+    prompt: |
+      Eres analista senior. Objetivo: resumir ventas Q1 en tres bullets. Tono: ejecutivo, nada de relleno.
+    hint: >
+      Al menos 40 caracteres. Contexto + objetivo + tono en la misma frase.
+    xp: 20
+    expected_response_seconds: 15
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(contexto|objetivo|tono|analista|resumir|bullets)"
+    success_title: "Respuesta estructurada. Asi se pide."
+    success_sub: "La regla de oro del prompting. Contexto + objetivo + tono, siempre."
+    system_prompt: |
+      Eres un tutor de prompting dentro del F2 Claude Code Lab de learn.example.com.
+      El learner acaba de leer que un prompt bueno tiene tres ingredientes:
+      contexto, objetivo, tono. Va a escribirte UN SOLO mensaje que intente
+      poner los tres.
+
+      REGLA CRITICA para esta leccion: si el mensaje del learner contiene una
+      referencia al rol o contexto (palabras como "analista", "eres", "soy",
+      "contexto"), una referencia al objetivo (palabras como "resumir",
+      "resume", "objetivo", "ventas", "Q1", "trimestre", "ideas"), Y una
+      referencia al tono o formato (palabras como "tono", "ejecutivo",
+      "bullets", "breve", "corto", "cifras"), responde EXACTAMENTE con estas
+      tres lineas (sin preambulo, sin despedida, sin markdown):
+
+      • Ingresos Q1: 1.2M, +14% YoY
+      • Margen bruto: 42%, estable vs Q4
+      • Riesgo: concentracion en 3 cuentas (48% del total)
+
+      Si le falta alguno de los tres ingredientes, responde una sola frase
+      corta indicando que ingrediente falta (contexto, objetivo o tono) y
+      pidele que lo anada, sin reescribirle el prompt por el. Maximo 25
+      palabras. No uses markdown, no uses bloques de codigo.
+
+      Cualquier otra intencion del mensaje (preguntas, off-topic) la
+      respondes con una sola frase redirigiendolo a la tarea.
+
+on_complete:
+  total_xp: 20
+  takeaways:
+    - Contexto + objetivo + tono en cada peticion.
+    - El tono no es estilo literario: es restriccion operativa.
+  next_module: null

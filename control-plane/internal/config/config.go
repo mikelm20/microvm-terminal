@@ -108,6 +108,12 @@ type Config struct {
 	// local http development.
 	SecureCookies bool
 
+	// CookieDomain, when non-empty, is set as the Domain attribute on every
+	// cookie issued by the control plane. Used to share cookies across
+	// subdomains (e.g. ".example.com" so learn.example.com and api.learn.example.com
+	// see the same identity). Leave empty in local http dev.
+	CookieDomain string
+
 	// UseMockLauncher disables Firecracker and serves mock Sessions instead.
 	// Useful for macOS dev and CI.
 	UseMockLauncher bool
@@ -143,6 +149,7 @@ func Load(path string) (Config, error) {
 		VoiceDir:             "shared/voice",
 		WarmPoolTarget:       0,
 		SecureCookies:        false,
+		CookieDomain:         "",
 		UseMockLauncher:      false,
 	}
 
@@ -256,6 +263,8 @@ func parseTOML(f *os.File, cfg *Config) error {
 			}
 		case "secure_cookies":
 			cfg.SecureCookies = (val == "true" || val == "1")
+		case "cookie_domain":
+			cfg.CookieDomain = val
 		case "use_mock_launcher":
 			cfg.UseMockLauncher = (val == "true" || val == "1")
 		}
@@ -298,6 +307,9 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("SECURE_COOKIES"); v != "" {
 		cfg.SecureCookies = (v == "true" || v == "1")
+	}
+	if v := os.Getenv("COOKIE_DOMAIN"); v != "" {
+		cfg.CookieDomain = v
 	}
 	if v := os.Getenv("USE_MOCK_LAUNCHER"); v != "" {
 		cfg.UseMockLauncher = (v == "true" || v == "1")

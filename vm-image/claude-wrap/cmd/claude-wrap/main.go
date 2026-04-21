@@ -39,11 +39,12 @@ import (
 )
 
 var (
-	socketPath = flag.String("socket", "/run/learn/claude-wrap.sock", "unix socket path for guest-agent to tail")
-	claudeBin  = flag.String("claude", "claude", "path to claude binary")
-	cwd        = flag.String("cwd", "", "working directory for claude process")
-	echoText   = flag.Bool("echo-text", true, "echo assistant text + tool notices back to user stdout")
-	cmdlineExtra string
+	socketPath       = flag.String("socket", "/run/learn/claude-wrap.sock", "unix socket path for guest-agent to tail")
+	claudeBin        = flag.String("claude", "claude", "path to claude binary")
+	cwd              = flag.String("cwd", "", "working directory for claude process")
+	echoText         = flag.Bool("echo-text", true, "echo assistant text + tool notices back to user stdout")
+	systemPromptFile = flag.String("system-prompt-file", "", "path to a file whose contents become --append-system-prompt to claude; layered on top of any baked CLAUDE.md")
+	cmdlineExtra     string
 )
 
 func main() {
@@ -69,6 +70,16 @@ func main() {
 		"--output-format", "stream-json",
 		"--input-format", "stream-json",
 		"--verbose",
+	}
+	if *systemPromptFile != "" {
+		buf, err := os.ReadFile(*systemPromptFile)
+		if err != nil {
+			fatal("read system prompt file %s: %v", *systemPromptFile, err)
+		}
+		text := strings.TrimSpace(string(buf))
+		if text != "" {
+			args = append(args, "--append-system-prompt", text)
+		}
 	}
 	if cmdlineExtra != "" {
 		args = append(args, strings.Fields(cmdlineExtra)...)

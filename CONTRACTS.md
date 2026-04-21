@@ -533,6 +533,9 @@ export const LessonStepSchema = z.object({
   voice_first: z.boolean().optional(),              // composer defaults to mic
   requires_camera: z.boolean().optional(),          // composer shows camera CTA
   role_variants: z.record(DepartmentSchema, RoleVariantSchema).optional(),
+  // Per-step priming passed to claude via --append-system-prompt. Used by
+  // F2 Lab substeps where the canonical answer must be deterministic.
+  system_prompt: z.string().optional(),
 });
 
 export const PredicateSchema = z.discriminatedUnion("type", [

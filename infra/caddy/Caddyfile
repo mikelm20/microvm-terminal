@@ -39,3 +39,53 @@ learn.example.com {
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 }
+
+# api.learn.example.com -> control plane. Cross-subdomain API for learn-landing on
+# core-01. Browser at https://learn.example.com does fetch/WS to
+# https://api.learn.example.com with credentials; CORS must allow that origin plus
+# credentials. Cookies carry Domain=.example.com so they are shared.
+api.learn.example.com {
+	encode zstd gzip
+
+	# Short-circuit preflight before hitting the proxy. Caddy's own
+	# response keeps the allow-origin dynamic by echoing back the request
+	# origin when it matches our allowlist (only learn.example.com today).
+	@preflight {
+		method OPTIONS
+		header Origin https://learn.example.com
+	}
+	handle @preflight {
+		header Access-Control-Allow-Origin "https://learn.example.com"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Allow-Methods "GET, POST, PATCH, DELETE, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+		header Access-Control-Max-Age "600"
+		respond "" 204
+	}
+
+	# Real requests + WS upgrades: proxy through, but decorate with CORS.
+	header Access-Control-Allow-Origin "https://learn.example.com"
+	header Access-Control-Allow-Credentials "true"
+	header Vary "Origin"
+
+	reverse_proxy 127.0.0.1:8080 {
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+
+	log {
+		output file /var/log/caddy/api.learn.example.com.access.log {
+			roll_size 10mb
+			roll_keep 10
+		}
+		format json
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}

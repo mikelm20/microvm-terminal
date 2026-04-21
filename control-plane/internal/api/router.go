@@ -38,6 +38,10 @@ type Deps struct {
 	PublicOrigin string
 	// SecureCookies controls the Secure flag on cookies. false for local http.
 	SecureCookies bool
+	// CookieDomain, when non-empty, is set as the Domain attribute on every
+	// cookie issued by the control plane. Used to share auth across
+	// subdomains (e.g. ".example.com"). Leave empty for local http dev.
+	CookieDomain string
 	// Legacy gate for /login + /sessions. Optional; when nil those routes
 	// are not mounted and the client uses the new identity + magic-link flow.
 	LegacyGate *auth.Gate

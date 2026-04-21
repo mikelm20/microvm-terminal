@@ -99,7 +99,7 @@ func main() {
 
 	var legacyGate *auth.Gate
 	if _, err := os.Stat(cfg.AuthPasswordFile); err == nil {
-		if g, err := auth.NewGate(cfg.AuthPasswordFile, cfg.AuthCookieSecretFile); err == nil {
+		if g, err := auth.NewGate(cfg.AuthPasswordFile, cfg.AuthCookieSecretFile, cfg.CookieDomain); err == nil {
 			legacyGate = g
 		}
 	}
@@ -116,6 +116,7 @@ func main() {
 		LessonsDir:    cfg.LessonsDir,
 		PublicOrigin:  cfg.PublicOrigin,
 		SecureCookies: cfg.SecureCookies,
+		CookieDomain:  cfg.CookieDomain,
 		LegacyGate:    legacyGate,
 	})
 

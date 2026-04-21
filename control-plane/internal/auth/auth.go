@@ -30,6 +30,7 @@ const (
 type Gate struct {
 	password     []byte
 	cookieSecret []byte
+	cookieDomain string
 
 	// Rate-limit /login per IP to stop casual brute-force.
 	rlMu     sync.Mutex
@@ -43,7 +44,9 @@ type rlState struct {
 
 // NewGate loads secrets from files. passwordFile must exist. If
 // cookieSecretFile is missing, a random 32-byte secret is generated and written.
-func NewGate(passwordFile, cookieSecretFile string) (*Gate, error) {
+// cookieDomain, when non-empty, scopes the legacy auth cookie across
+// subdomains.
+func NewGate(passwordFile, cookieSecretFile, cookieDomain string) (*Gate, error) {
 	pw, err := os.ReadFile(passwordFile)
 	if err != nil {
 		return nil, fmt.Errorf("read password file %s: %w", passwordFile, err)
@@ -73,6 +76,7 @@ func NewGate(passwordFile, cookieSecretFile string) (*Gate, error) {
 	return &Gate{
 		password:     pw,
 		cookieSecret: secret,
+		cookieDomain: cookieDomain,
 		rlTokens:     make(map[string]*rlState),
 	}, nil
 }
@@ -149,7 +153,7 @@ func (g *Gate) buildCookie() *http.Cookie {
 	mac := hmac.New(sha256.New, g.cookieSecret)
 	mac.Write([]byte(value))
 	sig := mac.Sum(nil)
-	return &http.Cookie{
+	c := &http.Cookie{
 		Name:     CookieName,
 		Value:    value + "." + hex.EncodeToString(sig),
 		Path:     "/",
@@ -158,6 +162,10 @@ func (g *Gate) buildCookie() *http.Cookie {
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(CookieMaxAge.Seconds()),
 	}
+	if g.cookieDomain != "" {
+		c.Domain = g.cookieDomain
+	}
+	return c
 }
 
 func (g *Gate) cookieOK(r *http.Request) bool {
