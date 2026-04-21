@@ -27,7 +27,7 @@ Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estra
 
 ## 2. Stack choices (frozen, do not renegotiate)
 
-- **Mobile**: React Native + Expo SDK 52 + Expo Router + NativeWind + Reanimated 3. First-party Expo modules: haptics, speech, camera, notifications, secure-store, image, linking, auth-session, local-authentication.
+- **Mobile**: TBD. The first implementation was deleted on 2026-04-18. A full redesign of the mobile stack (framework, routing, state, styling) will land in a later sprint.
 - **Public web**: Next.js 15 App Router + Tailwind + `next/og` for OG cards. Self-hosted at `learn.example.com` behind Cloudflare.
 - **Control plane**: Go 1.22 (existing), chi router (existing), Postgres 16, sqlc for typed queries, goose for migrations.
 - **`claude-wrap` + guest agent**: Go 1.22, static binary, communicates via vsock (existing protocol) + JSON event payloads.
@@ -53,17 +53,9 @@ Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estra
   .nvmrc                       (node 20 LTS)
   .gitignore
 
-  apps/
-    mobile/                    (RN + Expo. Owned jointly by Agent-Convo + Agent-Path.)
-      app/                     (Expo Router file-system routes)
-      components/
-      lib/
-      assets/
-      app.json
-      package.json
-      tsconfig.json
-    (web lives in its own repo: learn-landing. Landing and app
-    are intentionally decoupled; this monorepo is API + mobile only.)
+  (The mobile app was deleted on 2026-04-18 and will be redesigned; until
+  the new scaffold lands, this monorepo is API + shared packages only. The
+  marketing/proof web lives in its own repo: learn-landing.)
 
   shared/                      (TS packages, imported as @learn/shared/*)
     api/                       (Zod schemas + TS types for HTTP + WS)
@@ -472,7 +464,7 @@ Clients map `code` to a localized voice-table entry, never show `message` to use
 The JSON file `tokens.json` is the ONLY source of truth for colors, type, spacing, motion, shadow, radius. Do not hard-code values anywhere else. Agent-Tooling emits:
 
 - `tokens.ts` (typed TS export)
-- `tailwind-preset.js` (consumed by `apps/mobile` NativeWind config and by the separate marketing/proof web repo)
+- `tailwind-preset.js` (consumed by the separate marketing/proof web repo; the future mobile rewrite will consume it too)
 
 Initial values are committed at scaffold time. Evolving requires architecture review.
 
@@ -752,47 +744,10 @@ See section 4.3. Every handler returns either a 2xx with the typed response or a
 
 **Exit**: in docker-compose.dev stack, a VM cannot reach `google.com`, a VM with exhausted quota receives 429 from the Platform proxy, all secrets loaded via `doppler run -- ./learn-cp`.
 
-### Agent-Convo
+### Mobile agents (Agent-Convo + Agent-Path)
 
-**Scope**: mobile Conversation + Moment + sensory inputs (haptics, voice, camera).
-
-**Owns**:
-- `apps/mobile/app/(lesson)/[lessonId]/conversation.tsx`
-- `apps/mobile/app/(lesson)/[lessonId]/moment.tsx`
-- `apps/mobile/components/transcript/` (ClaudeBubble, UserBubble, ToolCallCard, ToolCallSkeleton)
-- `apps/mobile/components/composer/` (Composer, MicButton, CameraButton, SendButton)
-- `apps/mobile/lib/api.ts` (typed API client from `shared/api`)
-- `apps/mobile/lib/ws.ts` (wizard WS client with reconnect)
-- `apps/mobile/lib/haptics.ts` (expo-haptics wrapper, 3 signals)
-- `apps/mobile/lib/voice.ts` (expo-speech in/out)
-- `apps/mobile/lib/camera.ts` (expo-camera + attach)
-- `apps/mobile/lib/offline-queue.ts` (prompts with Idempotency-Key)
-- `apps/mobile/lib/motion.ts` (Reanimated choreography: tool-card enter, bubble stream, moment take-over)
-
-**Consumes**: `shared/api/schemas`, `shared/api/events`, `shared/tokens`, `shared/voice`.
-
-**Exit**: video (real device iPhone, not simulator) showing: open app -> tap current lesson -> Conversation renders context -> tap send -> optimistic user bubble -> tool-call cards stream in -> Claude bubble -> `step_satisfied` arrives -> Moment full-bleed 1.4s -> haptic confirmed visible on-screen.
-
-### Agent-Path
-
-**Scope**: mobile Path + Return + Role pick + Auth UI + Settings + local progress.
-
-**Owns**:
-- `apps/mobile/app/_layout.tsx` (root nav)
-- `apps/mobile/app/index.tsx` (Path)
-- `apps/mobile/app/auth.tsx` (magic-link entry)
-- `apps/mobile/app/auth/callback.tsx` (magic-link callback via deep link)
-- `apps/mobile/app/role-pick.tsx` (8-department interstitial)
-- `apps/mobile/app/settings.tsx`
-- `apps/mobile/components/path/` (PathColumn, PathNode, StreakRibbon, ReturnCard)
-- `apps/mobile/components/role/` (RoleTile)
-- `apps/mobile/lib/progress.ts` (local store, grace tokens, streak logic)
-- `apps/mobile/lib/identity.ts` (UUID in expo-secure-store)
-- `apps/mobile/app.json` (Expo config, deep-link scheme `learn://`)
-
-**Consumes**: `shared/api/schemas`, `shared/tokens`, `shared/voice`.
-
-**Exit**: video on real device: first launch -> role pick -> optional auth -> Path with current node breathing + streak ribbon; mock-forward device clock 48h -> Return card renders correct bucket copy; progress syncs to Postgres visible via psql.
+Deleted 2026-04-18 alongside the mobile app. The redesign will define its own
+agent scopes; until then, any work that would have landed here is blocked.
 
 ### Agent-Proof (out of scope for this monorepo)
 
@@ -800,7 +755,7 @@ The marketing/proof/certificate web lives in a separate repo (`learn-landing`) o
 
 ## 9. Conventions
 
-- **Branches**: one branch per agent, named as in task descriptions (`contracts/scaffold`, `spine/predicates`, `api/endpoints`, `gate/security`, `mobile/conversation`, `mobile/path`, `web/proof`).
+- **Branches**: one branch per agent, named as in task descriptions (`contracts/scaffold`, `spine/predicates`, `api/endpoints`, `gate/security`, `web/proof`).
 - **Commits**: imperative, <=72 chars first line, body wraps at 80. Reference issue IDs (#11, #12, #13, #14, #15) when a commit closes part of an issue.
 
 - **PRs**: none during the 2-day sprint. Merge is manual at the end. Each agent pushes their branch, leader (me) merges.

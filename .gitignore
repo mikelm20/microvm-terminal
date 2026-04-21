@@ -30,11 +30,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Expo / RN
-.expo/
-apps/mobile/ios/
-apps/mobile/android/
-
 # Go binaries at top-level
 /control-plane/learn-cp
 /control-plane/learn-cp.*

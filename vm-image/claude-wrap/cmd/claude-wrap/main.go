@@ -183,7 +183,7 @@ func forwardLoop(userIn io.Reader, claudeIn io.WriteCloser, em *emitter.Emitter)
 
 // isSubmitToken detects the optional marker a learner types to indicate a
 // multi-line paragraph is complete. Default ui is single-line-per-submit, but
-// we keep this hook in case the mobile client wants an explicit flush.
+// we keep this hook in case a client wants an explicit flush.
 func isSubmitToken(line string) bool {
 	switch strings.TrimSpace(line) {
 	case ".send", "/send", "<<<":
@@ -219,7 +219,7 @@ func submit(text string, enc *json.Encoder, em *emitter.Emitter) {
 		log.Printf("encode user msg: %v", err)
 	}
 	// Slash-command detection fires an extra event even before the assistant
-	// echoes it, because the mobile wizard may match /agents against this
+	// echoes it, because the client wizard may match /agents against this
 	// predicate immediately.
 	if strings.HasPrefix(text, "/") {
 		fields := strings.Fields(text)
@@ -238,7 +238,7 @@ func submit(text string, enc *json.Encoder, em *emitter.Emitter) {
 }
 
 // echoForUser renders a compact human-readable line for each event so the
-// learner still sees progress, not just JSON. The mobile client renders a
+// learner still sees progress, not just JSON. A structured client renders a
 // richer experience from the structured events; this is for the raw PTY path.
 func echoForUser(ev parser.Event) {
 	switch ev.Type {

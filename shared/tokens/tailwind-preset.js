@@ -3,10 +3,9 @@
 //
 // Consumed via:
 //   presets: [require("@learn/shared-tokens/tailwind-preset")]
-// in the NativeWind config in apps/mobile, and in the separate marketing/proof
-// web repo (not in this monorepo).
+// in the separate marketing/proof web repo (not in this monorepo).
 //
-// CommonJS, because tailwind.config.js in NativeWind is evaluated as CJS.
+// CommonJS, because tailwind.config.js is evaluated as CJS.
 
 const tokens = require("./tokens.json");
 

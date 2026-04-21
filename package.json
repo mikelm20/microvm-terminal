@@ -2,7 +2,7 @@
   "name": "learn-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "learn.example.com: mobile-native app to teach Claude Code by embedding it",
+  "description": "learn.example.com: app to teach Claude Code by embedding it",
   "packageManager": "pnpm@9.12.0",
   "scripts": {
     "build": "turbo run build",
