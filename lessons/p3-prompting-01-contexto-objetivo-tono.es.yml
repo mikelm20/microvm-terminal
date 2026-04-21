@@ -1,0 +1,119 @@
+# Fase 2, Pilar 3 Prompting, Leccion 1. Version ES.
+#
+# La regla de oro del m2 pre-pivote, ahora dentro del pilar de prompting:
+# contexto, objetivo, tono. Mascado medio: los prompts todavia se muestran,
+# pero con un hueco a completar y una variante libre.
+#
+# Predicados:
+#   - claude_prompt_sent: { match_regex }
+#   - claude_tool_call:   { tool: Read, path_regex }
+
+id: p3-prompting-01-contexto-objetivo-tono
+module_number: 301
+language: es
+title: La regla de oro
+subtitle: Contexto, objetivo, tono en cada peticion
+description: >
+  Google busca. Claude entiende. Cuanto mas ordenado el pedido,
+  mejor la respuesta. Tres ingredientes en cada uno: contexto
+  (de que va esto), objetivo (que quieres conseguir), tono
+  (como lo quieres escrito). Hoy lo practicas tres veces.
+estimated_minutes: 7
+sandbox: empresa-prueba
+mental_model: >
+  Un prompt bueno no es mas largo, es mejor estructurado. El
+  tres por tres: pego el contexto, digo el objetivo, pido el
+  tono. En ese orden.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: solo-objetivo
+    title: Manda la version corta, solo objetivo
+    body: >
+      Empezamos por el patron mas comun y peor. Una pregunta sin
+      contexto, sin tono, solo el objetivo. Vas a ver la respuesta
+      para comparar luego.
+    prompt: |
+      dame tres ideas para la junta
+    hint: >
+      Truco: fija como es la respuesta. Generica, probablemente
+      larga, sin referencias a tu caso. Eso es lo que vamos a
+      mejorar.
+    xp: 10
+    expected_response_seconds: 20
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)tres\\s+ideas|ideas\\s+para"
+    success_title: "Bien. Tienes la respuesta floja de referencia"
+    success_sub: "Ganas 10 XP. Ahora le das contexto y veras el cambio."
+
+  - id: con-contexto
+    title: Anade contexto, vuelve a pedir
+    body: >
+      Ahora pegas el mismo objetivo pero le anades contexto: de
+      donde sacar info. Fijate en la diferencia de respuesta: en
+      lugar de genericas, Claude va a mirar archivos y proponer
+      ideas ancladas en tu empresa.
+    prompt: |
+      contexto: soy empleado de empresa prueba, el CLAUDE.md raiz ya te dice mis prioridades. Objetivo: dame tres ideas concretas para mi intervencion en la junta trimestral. Lee 05-finanzas y 08-estrategia antes de responder.
+    hint: >
+      Truco: el contexto no tiene que ser largo. Dos frases y la
+      ruta de los archivos bastan para que Claude deje de adivinar.
+    xp: 10
+    expected_response_seconds: 60
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "(05-finanzas|08-estrategia)"
+    success_title: "Bien. La respuesta ya esta anclada en tu empresa"
+    success_sub: "Ganas 10 XP. Falta el tono, la pieza que nadie pide."
+
+  - id: con-tono
+    title: Anade tono y pidelo otra vez
+    body: >
+      Ultimo ingrediente. Le dices como quieres que te lo
+      escriba. Este es el que casi nadie pide y el que mas
+      cambia la respuesta. Reescribe el prompt completando con
+      el tono que mas te guste.
+    prompt: |
+      mismo contexto y objetivo, pero escribelo en tres bullets de una linea, tono ejecutivo, sin adjetivos vacios, con una cifra en cada idea
+    hint: >
+      Truco: el tono no es estilo literario, es restricciones
+      operativas. "Bullets de una linea" es tono. "Con cifra" es
+      tono. "Sin adjetivos vacios" es tono.
+    xp: 10
+    expected_response_seconds: 45
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(bullets|tono|ejecutivo|cifra|adjetivos)"
+    success_title: "Bien. Has hecho el tres por tres completo"
+    success_sub: "Ganas 10 XP. Desde hoy, ningun prompt sin los tres ingredientes."
+
+  - id: reformular-libre
+    title: Ahora tu, de cero
+    body: >
+      Escribe un prompt que uses en tu trabajo real. Aplicale los
+      tres ingredientes: contexto, objetivo, tono. Sin plantilla,
+      sin copiar. Aqui empiezas a componer libre.
+    hint: >
+      Truco: si dudas, piensalo como un email a un becario listo.
+      "Esto va de X. Quiero Y. Escribelo asi."
+    xp: 10
+    expected_response_seconds: 90
+    success:
+      type: claude_prompt_sent
+    success_title: "Bien. Primer prompt libre con el tres por tres"
+    success_sub: "Ganas 10 XP. La regla de oro es tuya. Siguiente: como hacerla aun mejor con ejemplos."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - Contexto, objetivo y tono en cada peticion.
+    - Contexto = de donde sacar info; objetivo = que quieres; tono = como escribirlo.
+    - El tono es restriccion operativa, no estilo literario.
+  next_module: p3-prompting-02-ejemplos-y-critica

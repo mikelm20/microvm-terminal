@@ -171,6 +171,54 @@ export type Voice = {
     unknown: string;
     auth: string;
   };
+  taller: {
+    phase_title: string;
+    phase_subtitle: string;
+    pillars: {
+      comandos: {
+        title: string;
+        subtitle: string;
+        label: string;
+        intro: string;
+      };
+      context: {
+        title: string;
+        subtitle: string;
+        label: string;
+        intro: string;
+      };
+      prompting: {
+        title: string;
+        subtitle: string;
+        label: string;
+        intro: string;
+      };
+    };
+    mascado_level: {
+      high: string;
+      medium: string;
+      low: string;
+    };
+    step_feedback: {
+      copied_prompt: string;
+      typed_own: string;
+      slash_done: string;
+      read_detected: string;
+      tool_call_running: string;
+      window_checked: string;
+      window_saved: string;
+    };
+    pillar_complete: {
+      comandos: string;
+      context: string;
+      prompting: string;
+    };
+    phase_complete: {
+      title: string;
+      subtitle: string;
+      cta: string;
+    };
+  };
 };
 
 export type VoiceKey =
@@ -291,6 +339,36 @@ export type VoiceKey =
   | "share.body_module"
   | "share.body_profile"
   | "share.title"
+  | "taller.mascado_level.high"
+  | "taller.mascado_level.low"
+  | "taller.mascado_level.medium"
+  | "taller.phase_complete.cta"
+  | "taller.phase_complete.subtitle"
+  | "taller.phase_complete.title"
+  | "taller.phase_subtitle"
+  | "taller.phase_title"
+  | "taller.pillar_complete.comandos"
+  | "taller.pillar_complete.context"
+  | "taller.pillar_complete.prompting"
+  | "taller.pillars.comandos.intro"
+  | "taller.pillars.comandos.label"
+  | "taller.pillars.comandos.subtitle"
+  | "taller.pillars.comandos.title"
+  | "taller.pillars.context.intro"
+  | "taller.pillars.context.label"
+  | "taller.pillars.context.subtitle"
+  | "taller.pillars.context.title"
+  | "taller.pillars.prompting.intro"
+  | "taller.pillars.prompting.label"
+  | "taller.pillars.prompting.subtitle"
+  | "taller.pillars.prompting.title"
+  | "taller.step_feedback.copied_prompt"
+  | "taller.step_feedback.read_detected"
+  | "taller.step_feedback.slash_done"
+  | "taller.step_feedback.tool_call_running"
+  | "taller.step_feedback.typed_own"
+  | "taller.step_feedback.window_checked"
+  | "taller.step_feedback.window_saved"
   | "welcome.cta"
   | "welcome.subtitle"
   | "welcome.title";
@@ -451,6 +529,36 @@ export const voiceKeys: readonly VoiceKey[] = [
   "share.body_module",
   "share.body_profile",
   "share.title",
+  "taller.mascado_level.high",
+  "taller.mascado_level.low",
+  "taller.mascado_level.medium",
+  "taller.phase_complete.cta",
+  "taller.phase_complete.subtitle",
+  "taller.phase_complete.title",
+  "taller.phase_subtitle",
+  "taller.phase_title",
+  "taller.pillar_complete.comandos",
+  "taller.pillar_complete.context",
+  "taller.pillar_complete.prompting",
+  "taller.pillars.comandos.intro",
+  "taller.pillars.comandos.label",
+  "taller.pillars.comandos.subtitle",
+  "taller.pillars.comandos.title",
+  "taller.pillars.context.intro",
+  "taller.pillars.context.label",
+  "taller.pillars.context.subtitle",
+  "taller.pillars.context.title",
+  "taller.pillars.prompting.intro",
+  "taller.pillars.prompting.label",
+  "taller.pillars.prompting.subtitle",
+  "taller.pillars.prompting.title",
+  "taller.step_feedback.copied_prompt",
+  "taller.step_feedback.read_detected",
+  "taller.step_feedback.slash_done",
+  "taller.step_feedback.tool_call_running",
+  "taller.step_feedback.typed_own",
+  "taller.step_feedback.window_checked",
+  "taller.step_feedback.window_saved",
   "welcome.cta",
   "welcome.subtitle",
   "welcome.title"

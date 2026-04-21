@@ -1,0 +1,98 @@
+# Fase 2, Pilar 3 Prompting, Leccion 2. Version ES.
+#
+# Few-shot (pedir con ejemplos) y pedir critica a Claude. Mascado bajo:
+# el primer paso lleva prompt completo, los siguientes van con mucho
+# menos andamio.
+#
+# Predicados:
+#   - claude_prompt_sent: { match_regex }
+
+id: p3-prompting-02-ejemplos-y-critica
+module_number: 302
+language: es
+title: Ejemplos y autocritica
+subtitle: Few-shot y pedir revision son las dos palancas mas infravaloradas
+description: >
+  Dos tecnicas que todo el mundo puede aplicar sin saber teoria.
+  La primera: dale un ejemplo del tipo de respuesta que quieres,
+  y lo clavara. La segunda: cuando te responde, pidele que se
+  critique a si mismo. La segunda iteracion suele ser la buena.
+estimated_minutes: 6
+sandbox: empresa-prueba
+mental_model: >
+  Ensenar con ejemplo siempre supera ensenar con instruccion.
+  Corregirse mirandose al espejo siempre supera al primer intento.
+  Aplicalo a Claude igual que a un humano.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: few-shot
+    title: Dale un ejemplo de la respuesta que quieres
+    body: >
+      Le pides que te escriba un mensaje para un cliente, pero en
+      vez de describir como debe ser, le pegas un ejemplo de
+      mensaje tuyo anterior. Claude imita el patron mejor que
+      cualquier descripcion que le des.
+    prompt: |
+      escribe un mensaje de seguimiento para el cliente Acme. Tono y formato como este ejemplo mio: "Hola Ana, ayer comentamos la propuesta, te mando version corregida con el descuento por volumen aplicado. Si te encaja la cerramos manana. Abrazo, Joe." No copies el contenido, copia el patron.
+    hint: >
+      Truco: "copia el patron, no el contenido". Esa frase le deja
+      claro que el ejemplo es estilo, no plantilla rigida.
+    xp: 10
+    expected_response_seconds: 30
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(ejemplo|patron|tono.{0,20}formato|como\\s+este)"
+    success_title: "Bien. Few-shot aplicado"
+    success_sub: "Ganas 10 XP. Ahora la segunda tecnica: la autocritica."
+
+  - id: pedir-critica
+    title: Pidele que critique su propia respuesta
+    body: >
+      Sin cambiar de tema, le pides que mire su mensaje anterior
+      y te diga tres cosas que podria mejorar. Sin pelos en la
+      lengua. La primera critica siempre es demasiado amable.
+      Por eso le vas a pedir que sea dura.
+    prompt: |
+      revisate tu propio mensaje anterior y dime tres cosas concretas que podrian mejorar. Se duro, no me digas que "esta bien pero".
+    hint: >
+      Truco: "se duro" funciona mejor que "se honesto" o "se
+      critico". La palabra explicita desbloquea un Claude menos
+      complaciente.
+    xp: 10
+    expected_response_seconds: 30
+    success:
+      type: claude_prompt_sent
+      match_regex: "(?i)(revisa|critica|mejorar|duro|honesto)"
+    success_title: "Bien. Has pedido critica y ha salido util"
+    success_sub: "Ganas 10 XP. Ultimo paso: combinar ambas para un entregable real."
+
+  - id: combinar
+    title: Combina ejemplo y critica
+    body: >
+      Eliges algo que tengas que escribir hoy en el trabajo.
+      Aplicas el patron completo: das un ejemplo del estilo,
+      pides la primera version, y despues pides critica. Sin
+      prompt literal: lo construyes tu.
+    hint: >
+      Truco: el bucle es ejemplo, version 1, critica, version 2.
+      No suelen hacer falta mas iteraciones. Si vas por la quinta,
+      revisa el objetivo, igual no lo tienes claro.
+    xp: 10
+    expected_response_seconds: 120
+    success:
+      type: claude_prompt_sent
+    success_title: "Bien. Has cerrado el bucle ejemplo + critica"
+    success_sub: "Ganas 10 XP. Estas componiendo libre. Ultima leccion: tareas grandes."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - Dar un ejemplo (few-shot) supera describir el estilo deseado.
+    - Pedir autocritica dura produce mejor segunda version.
+    - El bucle ejemplo, version 1, critica, version 2 es el patron base.
+  next_module: p3-prompting-03-descomponer

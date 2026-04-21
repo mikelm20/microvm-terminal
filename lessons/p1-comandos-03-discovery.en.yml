@@ -1,0 +1,98 @@
+# Fase 2, Pillar 1 Commands, Lesson 3. EN.
+#
+# Discovery commands: /init (seed CLAUDE.md), /agents (see subagents),
+# /status (state + context window). Closes the pillar: still high mascado
+# because the names are a closed vocabulary, but less hand-holding on
+# the mechanics.
+
+id: p1-comandos-03-discovery
+module_number: 103
+language: en
+title: The three discovery commands
+subtitle: /init, /agents and /status. Know your project, team, and state
+description: >
+  Three slash commands everyone uses sooner or later. /init scans
+  the folder and proposes a seed CLAUDE.md so Claude remembers you
+  without asking. /agents lists the specialist subagents. /status
+  shows model, folder and context window. It is the "orient me in
+  a new project" in thirty seconds.
+estimated_minutes: 5
+sandbox: empresa-prueba
+mental_model: >
+  Discovery slashes are the three questions you ask a newcomer:
+  "what is this project", "who is on the team", "how is it going".
+  Answers on one screen.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: slash-init
+    title: Run /init to seed CLAUDE.md
+    body: >
+      /init makes Claude look at your folder, infer what it is
+      about, and propose a starter CLAUDE.md. Not final, just a
+      draft you will tune. Saves ten minutes of blank page.
+    prompt: |
+      /init
+    hint: >
+      Trick: /init runs once per project. If you later tweak by
+      hand (you will), no need to rerun it.
+    xp: 10
+    expected_response_seconds: 45
+    success:
+      type: claude_slash_command
+      match:
+        command: init
+    success_title: "Nice. You have a starter CLAUDE.md"
+    success_sub: "You earn 10 XP. You will tune it in Pillar 2, no need for perfection today."
+
+  - id: slash-agents
+    title: Check subagents with /agents
+    body: >
+      /agents opens the subagents menu: specialists Claude can
+      invoke per task. Empty today. Informational; just so you
+      know where to look when we talk about delegation.
+    prompt: |
+      /agents
+    hint: >
+      Trick: /agents is later used to create and edit subagents.
+      Today we just look at the shelf.
+    xp: 10
+    expected_response_seconds: 15
+    success:
+      type: claude_slash_command
+      match:
+        command: agents
+    success_title: "Nice. You saw where subagents live"
+    success_sub: "You earn 10 XP. On to the third one."
+
+  - id: slash-status
+    title: Check your state with /status
+    body: >
+      /status tells you model, working folder, configuration and,
+      most importantly, the context window: how much room you have
+      used in this conversation. Dashboard snapshot.
+    prompt: |
+      /status
+    hint: >
+      Trick: watch the context percentage. That number drives all
+      of Pillar 2. Memorize where it appears.
+    xp: 10
+    expected_response_seconds: 15
+    success:
+      type: claude_slash_command
+      match:
+        command: status
+    success_title: "Nice. You saw your dashboard"
+    success_sub: "You earn 10 XP. Pillar 1 done. Pillar 2 starts with that context meter."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - /init proposes a starter CLAUDE.md by scanning the folder.
+    - /agents lists the subagents available in the project.
+    - /status shows model, folder, and context used.
+  next_module: p2-contexto-01-ventana

@@ -1,0 +1,107 @@
+# Fase 2, Pilar 2 Contexto, Leccion 4. Version ES.
+#
+# Cierre de Pilar 2. Subagentes como scope de contexto aislado: la tarea
+# delegada ocupa su propia ventana. Mascado medio-bajo: el usuario compone
+# el prompt de delegacion mas abierto, el slash sigue literal.
+#
+# Predicados:
+#   - claude_slash_command: { command: agents }
+#   - claude_tool_call:     { tool: Task }
+#   - claude_prompt_sent:   { match_regex }
+
+id: p2-contexto-04-subagentes
+module_number: 204
+language: es
+title: Subagentes como burbujas de contexto
+subtitle: Delegar tareas pesadas sin contaminar tu conversacion principal
+description: >
+  Un subagente es un especialista con su propia ventana de
+  contexto. Cuando le delegas algo, trabaja aparte y te devuelve
+  solo el resultado. Tu conversacion principal queda limpia.
+  Util para tareas que leen mucho y responden poco.
+estimated_minutes: 6
+sandbox: empresa-prueba
+mental_model: >
+  Tu conversacion con Claude es el despacho central. Un subagente
+  es un analista que se lleva el expediente a otra sala, lo
+  trabaja alli y te devuelve una nota. La sala del analista se
+  ensucia, la tuya no.
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: revisar-agents
+    title: Mira los subagentes disponibles
+    body: >
+      /agents abre el panel. Hoy vas a ver los de ejemplo que
+      vienen con Empresa Prueba: jefe de agenda, revisor, buscador.
+      Fijate en la columna "description": eso es lo que Claude lee
+      para decidir cuando activarlos.
+    prompt: |
+      /agents
+    hint: >
+      Truco: la description del subagente es el curriculum que
+      Claude lee. Mejor description, mejor delegacion automatica.
+    xp: 10
+    expected_response_seconds: 15
+    success:
+      type: claude_slash_command
+      match:
+        command: agents
+    success_title: "Bien. Conoces a tu equipo invisible"
+    success_sub: "Ganas 10 XP. Vamos a delegar algo pesado a uno."
+
+  - id: delegar-tarea
+    title: Delega una busqueda larga
+    body: >
+      Le pides a Claude que recorra varios departamentos buscando
+      menciones de un tema. Es una tarea que llenaria tu ventana
+      leyendo muchos archivos. Asi que lo delegas: que lo haga un
+      subagente y te traiga solo el resumen.
+    prompt: |
+      usa un subagente para buscar en todos los departamentos las menciones de "junta trimestral" y devuelveme solo un resumen de una frase por departamento donde aparezca
+    hint: >
+      Truco: delega cuando la tarea lee mucho pero devuelve poco.
+      Informes, busquedas, revisiones largas. Tu chat principal
+      queda limpio.
+    xp: 10
+    expected_response_seconds: 90
+    success:
+      type: claude_tool_call
+      match:
+        tool: Task
+    success_title: "Bien. Has delegado sin ensuciar tu contexto"
+    success_sub: "Ganas 10 XP. El subagente leyo por ti y te trajo el resumen."
+
+  - id: comprobar-ventana
+    title: Comprueba que tu ventana sigue ligera
+    body: >
+      /status. Vas a ver que tu contador subio poco comparado con
+      lo que habria ocupado leer todo tu. Esa es la gracia: la
+      lectura pesada vive en la burbuja del subagente, no en la
+      tuya.
+    prompt: |
+      /status
+    hint: >
+      Truco: compara con lo que te ocupo cargar tres departamentos
+      en la leccion 1 del pilar. Si esta tarea toco mas archivos y
+      tu contador subio menos, el subagente cumplio.
+    xp: 10
+    expected_response_seconds: 10
+    success:
+      type: claude_slash_command
+      match:
+        command: status
+    success_title: "Bien. Pilar 2 cerrado"
+    success_sub: "Ganas 10 XP. Dominas ventana, tijeras, memoria y delegacion. Listo para prompting."
+
+on_complete:
+  total_xp: 30
+  takeaways:
+    - Un subagente trabaja en su propia ventana de contexto.
+    - Devuelve solo el resultado, no el historial completo.
+    - Ideal para tareas que leen mucho y responden poco.
+  next_module: p3-prompting-01-contexto-objetivo-tono

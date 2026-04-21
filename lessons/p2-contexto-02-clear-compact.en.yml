@@ -1,0 +1,115 @@
+# Fase 2, Pillar 2 Context, Lesson 2. EN.
+
+id: p2-contexto-02-clear-compact
+module_number: 202
+language: en
+title: Tidy the desk with /clear and /compact
+subtitle: Change topic clean, or compress the thread
+description: >
+  Two shortcuts for the window. /clear wipes the conversation and
+  starts fresh: perfect to change topic. /compact compresses what
+  is there into a summary and lets you keep the same thread, just
+  lighter. Pick by whether you cut or continue.
+estimated_minutes: 6
+sandbox: empresa-prueba
+mental_model: >
+  /clear is "wipe the whole desk, next meeting". /compact is "take
+  a photo of what is there, throw out the originals, keep working
+  on top of the photo".
+
+preconditions:
+  working_directory: /home/learner/empresa-prueba
+  claude_running: true
+
+steps:
+
+  - id: cargar-tema-1
+    title: Load a first conversation
+    body: >
+      Start by asking something concrete about a team. The answer
+      does not matter, what matters is that there is history you
+      can later wipe or compress.
+    prompt: |
+      read 05-finanzas and explain the three most important lines
+    hint: >
+      Trick: what you ask here is practice material. Read just
+      enough to later compare how context changes.
+    xp: 10
+    expected_response_seconds: 45
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "05-finanzas"
+    success_title: "Nice. History loaded"
+    success_sub: "You earn 10 XP. Let us wipe it in one go."
+
+  - id: usar-clear
+    title: Cut with /clear
+    body: >
+      You are changing topic fully. You want to talk about
+      marketing now; the finance history is just noise. /clear
+      resets the conversation without closing Claude.
+    prompt: |
+      /clear
+    hint: >
+      Trick: /clear is "fresh slate". What you wipe is gone inside
+      the session. If you need to continue the old thread, use
+      /compact instead, we see it in a moment.
+    xp: 10
+    expected_response_seconds: 5
+    success:
+      type: claude_slash_command
+      match:
+        command: clear
+    success_title: "Nice. Window clean"
+    success_sub: "You earn 10 XP. You can change topic with zero drag."
+
+  - id: cargar-tema-2
+    title: Start a new topic
+    body: >
+      Now fresh, on marketing. This is the pattern you will use
+      all day: /clear between distinct tasks.
+    prompt: |
+      read 02-marketing and in two sentences tell me what they are up to
+    hint: >
+      Trick: /clear between each work block keeps mid-afternoon
+      context free of stuff from tasks you already closed.
+    xp: 10
+    expected_response_seconds: 45
+    success:
+      type: claude_tool_call
+      match:
+        tool: Read
+        path_regex: "02-marketing"
+    success_title: "Nice. New topic, clean window"
+    success_sub: "You earn 10 XP. Now the alternative: compress instead of wipe."
+
+  - id: usar-compact
+    title: Compress with /compact
+    body: >
+      Different case: you want to keep talking about the same
+      thing but the history is long. /compact summarizes the prior
+      into a shorter message and lets you continue. You lose
+      literal detail, you gain space.
+    prompt: |
+      /compact
+    hint: >
+      Trick: /compact when you want continuity but lighter. /clear
+      when you want total discontinuity. Pick by the kind of break.
+    xp: 10
+    expected_response_seconds: 30
+    success:
+      type: claude_slash_command
+      match:
+        command: compact
+    success_title: "Nice. Thread compressed"
+    success_sub: "You earn 10 XP. Both context scissors ready. Next: permanent memory."
+
+on_complete:
+  total_xp: 40
+  takeaways:
+    - /clear resets the conversation without exiting Claude.
+    - /compact compresses the history and keeps the thread going.
+    - /clear between distinct tasks, /compact inside the same one.
+  next_module: p2-contexto-03-claude-md
