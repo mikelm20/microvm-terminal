@@ -41,6 +41,9 @@ func (m *Manager) startVsockListener(s *Session, udsPath string) {
 	}
 	// The uds file must be accessible to the firecracker process (running as root here).
 	_ = os.Chmod(addr, 0o660)
+	m.logger.Info("vm boot: vsock listener up",
+		"session", s.ID, "addr", addr)
+	s.Events.Publish(GuestEvent{Type: "vm_booting", TS: nowRFC3339(), Payload: map[string]any{"stage": "guest_agent"}})
 
 	go func() {
 		defer ln.Close()
@@ -84,15 +87,21 @@ func (m *Manager) handleGuestConn(s *Session, conn net.Conn) {
 		return
 	}
 	if hello.Type != "hello" || hello.SessionToken != s.SessionToken {
-		m.logger.Warn("vsock hello bogus", "session", s.ID, "type", hello.Type)
+		m.logger.Warn("vsock hello rejected", "session", s.ID, "type", hello.Type, "token_match", hello.SessionToken == s.SessionToken)
 		return
 	}
-	m.logger.Info("guest-agent connected", "session", s.ID)
+	m.logger.Info("vm boot: guest-agent handshake complete",
+		"session", s.ID, "hostname", hello.Payload["hostname"],
+		"boot_elapsed_ms", time.Since(s.CreatedAt()).Milliseconds())
 	s.SetGuestConn(conn)
 	defer s.SetGuestConn(nil)
 
-	// Emit the hello to subscribers too, so the UI can react to "agent online".
+	// Session is now fully ready: publish, signal waiters, timestamp the db.
 	s.Events.Publish(GuestEvent{Type: "agent_online", TS: nowRFC3339(), Payload: map[string]any{"hostname": hello.Payload["hostname"]}})
+	s.Events.Publish(GuestEvent{Type: "vm_ready", TS: nowRFC3339()})
+	s.MarkReady()
+	m.logger.Info("session ready", "session", s.ID,
+		"boot_ms", time.Since(s.CreatedAt()).Milliseconds())
 
 	// Clear deadline and relay events
 	_ = conn.SetDeadline(time.Time{})

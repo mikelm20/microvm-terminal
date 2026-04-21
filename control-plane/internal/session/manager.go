@@ -21,6 +21,7 @@ import (
 	"github.com/mikelm20/learn-platform/control-plane/internal/config"
 	"github.com/mikelm20/learn-platform/control-plane/internal/firecracker"
 	"github.com/mikelm20/learn-platform/control-plane/internal/netalloc"
+	"github.com/mikelm20/learn-platform/control-plane/internal/vm"
 )
 
 type Manager struct {
@@ -111,12 +112,13 @@ func (m *Manager) Create(ctx context.Context) (*Session, error) {
 		cleanup(vmDir, tap, m.allocator, ip)
 		return nil, fmt.Errorf("prepare rootfs: %w", err)
 	}
+	m.logger.Info("vm boot: rootfs ready", "session", sid, "path", rootfs)
 
 	// The VM lives past the creating HTTP request; use a manager-owned context
 	// rather than the request context (which would kill it on handler return).
 	vsockUDS := filepath.Join(vmDir, "fc.vsock")
 	bootArgs := fmt.Sprintf("console=ttyS0 reboot=k panic=1 pci=off rw learn.session_token=%s learn.vsock_port=5555", sessionToken)
-	proc, err := firecracker.Launch(context.Background(), firecracker.LaunchSpec{
+	fcSpec := firecracker.LaunchSpec{
 		BinaryPath: m.cfg.FirecrackerBin,
 		VMDir:      vmDir,
 		KernelPath: m.cfg.KernelPath,
@@ -128,7 +130,13 @@ func (m *Manager) Create(ctx context.Context) (*Session, error) {
 		BootArgs:   bootArgs,
 		VsockCID:   cid,
 		VsockUDS:   vsockUDS,
-	})
+	}
+	m.logger.Info("vm boot: kernel start requested",
+		"session", sid, "kernel", fcSpec.KernelPath, "rootfs", fcSpec.RootfsPath,
+		"vcpu", fcSpec.VcpuCount, "mem_mib", fcSpec.MemMiB,
+		"jailer", m.cfg.UseJailer)
+
+	proc, err := m.launchVM(sid, fcSpec)
 	if err != nil {
 		cleanup(vmDir, tap, m.allocator, ip)
 		return nil, fmt.Errorf("launch: %w", err)
@@ -146,6 +154,7 @@ func (m *Manager) Create(ctx context.Context) (*Session, error) {
 		createdAt:    time.Now(),
 		mgr:          m,
 		done:         make(chan struct{}),
+		ready:        make(chan struct{}),
 		// Ring buffer of serial output so late-attaching WebSockets get boot
 		// output, not a blank screen. Plus it keeps the pipe drained so FC
 		// never blocks on write when no one is attached.
@@ -170,6 +179,33 @@ func (m *Manager) Create(ctx context.Context) (*Session, error) {
 	m.logger.Info("session created", "id", sid, "ip", ip.String(), "tap", tap, "hostname", hostname)
 	return s, nil
 }
+
+// launchVM dispatches to either vm.LaunchJailed (default on the real path)
+// or firecracker.Launch (when jailer is disabled, e.g. bring-up on a clean
+// box). Both return a VMProcess-compatible handle.
+func (m *Manager) launchVM(sid string, spec firecracker.LaunchSpec) (VMProcess, error) {
+	if m.cfg.UseJailer {
+		js := vm.JailedSpec{
+			LaunchSpec:     spec,
+			VMID:           sid,
+			JailerBin:      m.cfg.JailerScript,
+			ChrootBase:     m.cfg.JailerChrootBase,
+			CPUQuotaMicros: m.cfg.JailerCPUQuotaMicros,
+			MemBytes:       m.cfg.JailerMemBytes,
+			SeccompProfile: m.cfg.JailerSeccompProfile,
+			JailerUID:      m.cfg.JailerUID,
+			JailerGID:      m.cfg.JailerGID,
+		}
+		return vm.LaunchJailed(context.Background(), js)
+	}
+	return firecracker.Launch(context.Background(), spec)
+}
+
+// ensure both process shapes satisfy VMProcess. Compile-time guards.
+var (
+	_ VMProcess = (*firecracker.Process)(nil)
+	_ VMProcess = (*vm.Process)(nil)
+)
 
 // Get looks up a session by ID.
 func (m *Manager) Get(id string) (*Session, bool) {
@@ -223,9 +259,11 @@ func (m *Manager) Count() int {
 }
 
 var (
-	ErrAtCapacity = errors.New("session pool at capacity")
-	ErrNotFound   = errors.New("session not found")
-	ErrNoGuest    = errors.New("no guest-agent attached")
+	ErrAtCapacity     = errors.New("session pool at capacity")
+	ErrNotFound       = errors.New("session not found")
+	ErrNoGuest        = errors.New("no guest-agent attached")
+	ErrSessionClosed  = errors.New("session closed")
+	ErrBootTimeout    = errors.New("vm boot timed out waiting for guest-agent handshake")
 )
 
 func cleanup(vmDir, tap string, alloc *netalloc.Allocator, ip netip.Addr) {

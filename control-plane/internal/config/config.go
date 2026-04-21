@@ -37,6 +37,42 @@ type Config struct {
 	// VM. For the MVP it's a single file; later it will become a per-session lookup.
 	ClaudeOAuthTokenFile string
 
+	// UseJailer routes every Firecracker launch through
+	// infra/jailer/jailer.sh, gaining seccomp + chroot + cgroup v2 isolation.
+	// Default true on real launches; opt-out only for bring-up on a clean box.
+	UseJailer bool
+
+	// JailerScript is the absolute path to the wrapper script the control
+	// plane execs when UseJailer is true. Installed by infra/bootstrap.sh at
+	// /usr/local/libexec/learn-platform/jailer.sh.
+	JailerScript string
+
+	// JailerChrootBase is where jailer stages each VM's chroot. Defaults to
+	// /srv/jailer; the wrapper script creates the subtree at
+	// <base>/firecracker/<vm-id>/root.
+	JailerChrootBase string
+
+	// JailerCPUQuotaMicros is the cgroup cpu.max quota in microseconds per
+	// 100000 us period. Default 100000 (one full vCPU). Set higher to allow
+	// burst across cores.
+	JailerCPUQuotaMicros int64
+
+	// JailerMemBytes caps cgroup memory.max per VM. Default 1 GiB.
+	JailerMemBytes int64
+
+	// JailerSeccompProfile is a path to a JSON seccomp filter consumed by
+	// jailer via --seccomp-filter. Empty falls back to --seccomp-level 2.
+	JailerSeccompProfile string
+
+	// JailerUID / JailerGID override the unprivileged uid/gid jailer drops
+	// to. When 0, the launcher looks up the learn system user via getent.
+	JailerUID int
+	JailerGID int
+
+	// BootTimeoutSeconds bounds how long a Create call waits for the VM to
+	// reach ready (guest-agent hello over vsock). Default 90.
+	BootTimeoutSeconds int
+
 	// Legacy single-password gate. Kept for backwards compat with the old MVP.
 	AuthPasswordFile     string
 	AuthCookieSecretFile string
@@ -93,6 +129,12 @@ func Load(path string) (Config, error) {
 		BridgeName:           "fc-br0",
 		VmCIDRBase:           "172.20.0.0/24",
 		ClaudeOAuthTokenFile: "/etc/learn-platform/claude-oauth-token",
+		UseJailer:            true,
+		JailerScript:         "/usr/local/libexec/learn-platform/jailer.sh",
+		JailerChrootBase:     "/srv/jailer",
+		JailerCPUQuotaMicros: 100_000,
+		JailerMemBytes:       1 << 30,
+		BootTimeoutSeconds:   90,
 		AuthPasswordFile:     "/etc/learn-platform/auth-password",
 		AuthCookieSecretFile: "/etc/learn-platform/auth-cookie-secret",
 		DatabaseURL:          "postgres://learn:learn@localhost:5432/learn?sslmode=disable",
@@ -162,6 +204,34 @@ func parseTOML(f *os.File, cfg *Config) error {
 			cfg.VmCIDRBase = val
 		case "claude_oauth_token_file":
 			cfg.ClaudeOAuthTokenFile = val
+		case "use_jailer":
+			cfg.UseJailer = (val == "true" || val == "1")
+		case "jailer_script":
+			cfg.JailerScript = val
+		case "jailer_chroot_base":
+			cfg.JailerChrootBase = val
+		case "jailer_cpu_quota_us":
+			if n, err := strconv.ParseInt(val, 10, 64); err == nil {
+				cfg.JailerCPUQuotaMicros = n
+			}
+		case "jailer_mem_bytes":
+			if n, err := strconv.ParseInt(val, 10, 64); err == nil {
+				cfg.JailerMemBytes = n
+			}
+		case "jailer_seccomp_profile":
+			cfg.JailerSeccompProfile = val
+		case "jailer_uid":
+			if n, err := strconv.Atoi(val); err == nil {
+				cfg.JailerUID = n
+			}
+		case "jailer_gid":
+			if n, err := strconv.Atoi(val); err == nil {
+				cfg.JailerGID = n
+			}
+		case "boot_timeout_seconds":
+			if n, err := strconv.Atoi(val); err == nil {
+				cfg.BootTimeoutSeconds = n
+			}
 		case "auth_password_file":
 			cfg.AuthPasswordFile = val
 		case "auth_cookie_secret_file":
@@ -231,5 +301,34 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("USE_MOCK_LAUNCHER"); v != "" {
 		cfg.UseMockLauncher = (v == "true" || v == "1")
+	}
+	if v := os.Getenv("USE_JAILER"); v != "" {
+		cfg.UseJailer = (v == "true" || v == "1")
+	}
+	if v := os.Getenv("JAILER_SCRIPT"); v != "" {
+		cfg.JailerScript = v
+	}
+	if v := os.Getenv("JAILER_CHROOT_BASE"); v != "" {
+		cfg.JailerChrootBase = v
+	}
+	if v := os.Getenv("JAILER_SECCOMP_PROFILE"); v != "" {
+		cfg.JailerSeccompProfile = v
+	}
+	if v := os.Getenv("FIRECRACKER_BIN"); v != "" {
+		cfg.FirecrackerBin = v
+	}
+	if v := os.Getenv("KERNEL_PATH"); v != "" {
+		cfg.KernelPath = v
+	}
+	if v := os.Getenv("ROOTFS_PATH"); v != "" {
+		cfg.RootfsPath = v
+	}
+	if v := os.Getenv("VM_DATA_DIR"); v != "" {
+		cfg.VmDataDir = v
+	}
+	if v := os.Getenv("BOOT_TIMEOUT_SECONDS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.BootTimeoutSeconds = n
+		}
 	}
 }

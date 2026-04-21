@@ -20,6 +20,7 @@ help:
 	@echo "  lint          pnpm lint across workspaces"
 	@echo "  build         pnpm build across workspaces"
 	@echo "  go-build      go build ./... across Go modules"
+	@echo "  integration-vm  Boot one real Firecracker VM end-to-end (Linux + KVM only)"
 
 .env.local:
 	@test -f .env.local || (cp .env.local.example .env.local && echo "Created .env.local from example. Edit as needed.")
@@ -70,3 +71,10 @@ go-build:
 	cd guest-agent && go build ./...
 	@if [ -d vm-image/claude-wrap ]; then cd vm-image/claude-wrap && go build ./...; fi
 	@if [ -d proxy ]; then cd proxy && go build ./...; fi
+
+# Real Firecracker VM end-to-end boot test. Linux + /dev/kvm + root required.
+# See docs/firecracker-boot.md for the LEARN_IT_* env vars and artefact
+# prerequisites. Skips with a clear message on macOS.
+.PHONY: integration-vm
+integration-vm:
+	cd control-plane && go test -tags=integration_firecracker -v ./tests/integration/...

@@ -82,7 +82,11 @@ func main() {
 		mail.SetVoiceDir(cfg.VoiceDir)
 	}
 
-	launcher := pickLauncher(cfg, logger)
+	launcher, err := pickLauncher(cfg, logger)
+	if err != nil {
+		logger.Error("pick launcher", "err", err)
+		os.Exit(1)
+	}
 	var pool *session.WarmPool
 	if cfg.WarmPoolTarget > 0 {
 		pool = session.NewWarmPool(launcher, cfg.WarmPoolTarget, logger)
@@ -144,26 +148,56 @@ func main() {
 	fmt.Fprintln(os.Stderr, "bye")
 }
 
-// pickLauncher returns a VM launcher based on config. In UseMockLauncher mode
-// (or when the Firecracker manager cannot be built, e.g. on macOS dev boxes)
-// it returns a mock that yields empty Sessions instantly.
-func pickLauncher(cfg config.Config, logger *slog.Logger) session.Launcher {
+// pickLauncher returns the VM launcher the daemon should use.
+//
+// Default is the real Firecracker-backed launcher (via session.NewManager).
+// The mock launcher is only selected when cfg.UseMockLauncher is true (opt-in
+// via the use_mock_launcher config key or the USE_MOCK_LAUNCHER env var) or
+// the process is built with `-tags mock_launcher`. It is useful for unit
+// tests, the curl suite (`tests/api.sh`), and macOS development where KVM is
+// not available.
+//
+// A failure to initialise the real manager when mock is NOT requested is
+// fatal: falling back silently used to produce the confusing "using mock
+// launcher" log on `learn-01` even though the host was fully provisioned.
+func pickLauncher(cfg config.Config, logger *slog.Logger) (session.Launcher, error) {
 	if cfg.UseMockLauncher {
-		logger.Info("using mock launcher")
+		logger.Info("launcher: mock (opt-in via config)")
 		return session.LauncherFunc(func(ctx context.Context) (*session.Session, error) {
 			return session.NewInMemorySession(""), nil
-		})
+		}), nil
 	}
+	logger.Info("launcher: real firecracker",
+		"kernel", cfg.KernelPath,
+		"rootfs", cfg.RootfsPath,
+		"jailer", cfg.UseJailer,
+		"chroot_base", cfg.JailerChrootBase,
+		"vcpu_quota_us", cfg.JailerCPUQuotaMicros,
+		"mem_bytes", cfg.JailerMemBytes,
+	)
 	mgr, err := session.NewManager(cfg, logger)
 	if err != nil {
-		logger.Warn("firecracker manager init failed, falling back to mock launcher", "err", err)
-		return session.LauncherFunc(func(ctx context.Context) (*session.Session, error) {
-			return session.NewInMemorySession(""), nil
-		})
+		return nil, fmt.Errorf("init firecracker manager: %w (set USE_MOCK_LAUNCHER=true to run without a hypervisor)", err)
+	}
+	boot := time.Duration(cfg.BootTimeoutSeconds) * time.Second
+	if boot <= 0 {
+		boot = 90 * time.Second
 	}
 	return session.LauncherFunc(func(ctx context.Context) (*session.Session, error) {
-		return mgr.Create(ctx)
-	})
+		s, err := mgr.Create(ctx)
+		if err != nil {
+			return nil, err
+		}
+		waitCtx, cancel := context.WithTimeout(ctx, boot)
+		defer cancel()
+		if err := s.WaitReady(waitCtx); err != nil {
+			logger.Error("vm did not become ready within boot timeout",
+				"session", s.ID, "timeout", boot, "err", err)
+			_ = mgr.Destroy(s.ID)
+			return nil, session.ErrBootTimeout
+		}
+		return s, nil
+	}), nil
 }
 
 func loadOrMintSecret(hex32 string, logger *slog.Logger) ([]byte, error) {
