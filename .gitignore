@@ -22,10 +22,15 @@ dist/
 build/
 coverage/
 *.log
+*.tsbuildinfo
 /web/node_modules/
 /web/.next/
 /web/out/
 /web/.env*.local
+/apps/*/.next/
+/apps/*/node_modules/
+/apps/*/out/
+/apps/*/.env*.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
