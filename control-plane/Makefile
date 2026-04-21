@@ -54,3 +54,12 @@ migrate:
 .PHONY: sqlc
 sqlc:
 	sqlc generate
+
+# Boot a real Firecracker VM end to end (kernel + rootfs + jailer + vsock
+# handshake). Linux + /dev/kvm + root-ish privileges required. On macOS the
+# test body skips itself; the binary still compiles cleanly. Point the
+# LEARN_IT_* env vars at your kernel/rootfs/token artefacts. See
+# docs/firecracker-boot.md.
+.PHONY: integration-vm
+integration-vm:
+	go test -tags=integration_firecracker -v ./tests/integration/...

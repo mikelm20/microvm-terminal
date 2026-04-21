@@ -1,7 +1,9 @@
 package session
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/netip"
 	"sync"
@@ -9,8 +11,18 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mikelm20/learn-platform/control-plane/internal/firecracker"
 )
+
+// VMProcess abstracts both firecracker.Process (direct launch) and
+// vm.Process (jailed launch). Both shapes expose the same surface so the
+// session layer can stay launcher-agnostic.
+type VMProcess interface {
+	Stdin() io.Writer
+	Stdout() io.Reader
+	Stop() error
+	Wait() error
+	VmDir() string
+}
 
 // Session is one running Firecracker VM plus its serial pipes.
 type Session struct {
@@ -32,7 +44,7 @@ type Session struct {
 	// Lang is the session locale (mirrors lessons/<id>.<lang>.yml).
 	Lang string
 
-	Process *firecracker.Process
+	Process VMProcess
 	VmDir   string
 
 	// Serial drains Process.Stdout() into a ring buffer and broadcasts new bytes
@@ -50,6 +62,9 @@ type Session struct {
 	Warm bool
 
 	createdAt time.Time
+	readyAt   atomic.Int64 // unix nanos; set when the guest-agent handshake completes
+	ready     chan struct{}
+	readyOnce sync.Once
 	mgr       *Manager
 	done      chan struct{}
 
@@ -57,6 +72,51 @@ type Session struct {
 	// if any. Use SendToGuest to write to it safely.
 	guestMu   sync.Mutex
 	guestConn net.Conn
+}
+
+// MarkReady records the moment the guest-agent handshake completed and
+// unblocks any WaitReady waiters. Idempotent. Called by the vsock listener
+// after the hello frame validates.
+//
+// Callers must have initialised s.ready (all the constructors in this
+// package do). Panics if s.ready is nil to surface misuse loudly.
+func (s *Session) MarkReady() {
+	if s.ready == nil {
+		// Defensive: make it non-nil so the panic path stays noisy but
+		// the daemon does not crash on a single session init bug.
+		s.ready = make(chan struct{})
+	}
+	s.readyOnce.Do(func() {
+		s.readyAt.Store(time.Now().UnixNano())
+		close(s.ready)
+	})
+}
+
+// ReadyAt returns the time the session became ready, or the zero value if
+// the handshake has not completed yet.
+func (s *Session) ReadyAt() time.Time {
+	n := s.readyAt.Load()
+	if n == 0 {
+		return time.Time{}
+	}
+	return time.Unix(0, n)
+}
+
+// WaitReady blocks until MarkReady has been called or ctx is cancelled.
+// Returns nil on ready, or ctx.Err() otherwise.
+func (s *Session) WaitReady(ctx context.Context) error {
+	if s.ready == nil {
+		// NewInMemorySession path: no boot, no wait.
+		return nil
+	}
+	select {
+	case <-s.ready:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.done:
+		return ErrSessionClosed
+	}
 }
 
 // SetGuestConn stores the live guest vsock connection. Passing nil clears it.
@@ -92,12 +152,16 @@ func (s *Session) CreatedAt() time.Time { return s.createdAt }
 // NewInMemorySession constructs a bare Session for tests and warm-pool entries
 // that aren't backed by a real Firecracker Process.
 func NewInMemorySession(id string) *Session {
-	return &Session{
+	s := &Session{
 		ID:        id,
 		Events:    NewEventBus(),
 		createdAt: time.Now(),
 		done:      make(chan struct{}),
+		ready:     make(chan struct{}),
 	}
+	// In-memory sessions are ready the moment they exist.
+	s.MarkReady()
+	return s
 }
 
 // Done returns a channel closed when the Session is destroyed.
