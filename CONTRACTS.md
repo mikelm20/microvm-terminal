@@ -1,5 +1,7 @@
 # learn-platform contracts (frozen interfaces, v1)
 
+Updated 2026-04-21: client surface pivoted from mobile-native to web-first per ICP v2 + product brief v2. HTTP, WebSocket, Postgres and lesson-YAML contracts in sections 4 to 7 are unchanged; only sections 1, 2, 3 and 8 were rewritten to reflect the surface change.
+
 Source of truth for every parallel agent. If a contract below is ambiguous or incomplete, STOP and open an issue labeled `contracts-question`. Do NOT improvise. Contract drift is the biggest risk of parallel builds.
 
 This document freezes:
@@ -19,16 +21,17 @@ This document freezes:
 
 ## 1. Mission
 
-Mobile-native app (iOS + Android) that teaches Claude Code by embedding it. The learner opens the app, lands on a Path, taps the current lesson, reaches the Conversation surface, sends a real prompt to a real Claude Code instance running in a server-side Firecracker VM, watches tool-call cards stream in as protagonists, hits `step_satisfied`, gets a full-bleed Moment, and comes back tomorrow because the habit is installed.
+Web app (desktop plus mobile responsive) that teaches Claude Code by embedding it. The learner opens the page, anonymously enters a three-phase arc (Fundamentos concepts, Terminal guiada practice, Autonomia handoff), and at phase two sends a real prompt to a real Claude Code instance running in a server-side Firecracker VM. Tool-call cards stream in next to the terminal as the wow moment; when a predicate matches, the wizard advances. The arc moves from scaffolded commands on day 1 to free composition on day N. End state: the employee downloads Claude Code locally and the company pays the Anthropic license.
 
 Wow moment, textual: "el primer prompt con tool calls visibles como protagonistas". Every architectural choice serves that moment.
 
-Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estrategia) on their phones. Many open a terminal for the first time in their career. See `CLAUDE.md` at the repo root for the full ICP.
+Audience: employees, technical and non-technical, in companies adopting Claude Code but lacking internal capacity to train. Many open a terminal for the first time in their career. See `CLAUDE.md` at the repo root and `<drive-link>` in the team drive for the full ICP. Do not use the word "graduation" in user-facing copy or in contracts.
 
 ## 2. Stack choices (frozen, do not renegotiate)
 
-- **Mobile**: TBD. The first implementation was deleted on 2026-04-18. A full redesign of the mobile stack (framework, routing, state, styling) will land in a later sprint.
-- **Public web**: Next.js 15 App Router + Tailwind + `next/og` for OG cards. Self-hosted at `learn.example.com` behind Cloudflare.
+- **Web app**: Next.js 15 App Router + Tailwind + xterm.js for the embedded terminal, consuming `shared/*` packages. Lives in `apps/web/` in this monorepo. Self-hosted behind Caddy on `learn-01`. Caddy routes a path prefix under `learn.example.com` (exact prefix TBD at Fase 1 deploy) to this surface; the landing owns the root.
+- **Public landing**: separate repo `learn-landing` (Next.js 15 + Tailwind + `next/og`), its own Komodo stack. Serves the root of `learn.example.com`. Imports `@learn/shared-*` for contract and brand parity.
+- **Mobile native**: deferred. A native rewrite is not in scope for the first vendible milestone; the web app is mobile-responsive for the non-desktop audience.
 - **Control plane**: Go 1.22 (existing), chi router (existing), Postgres 16, sqlc for typed queries, goose for migrations.
 - **`claude-wrap` + guest agent**: Go 1.22, static binary, communicates via vsock (existing protocol) + JSON event payloads.
 - **Platform-owned Anthropic proxy**: Go 1.22, standalone binary, per-session quota, audit log.
@@ -53,9 +56,17 @@ Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estra
   .nvmrc                       (node 20 LTS)
   .gitignore
 
-  (The mobile app was deleted on 2026-04-18 and will be redesigned; until
-  the new scaffold lands, this monorepo is API + shared packages only. The
-  marketing/proof web lives in its own repo: learn-landing.)
+  apps/
+    web/                       (Next.js 15 App Router. Learner surface. Agent-Web owns once scaffolded.)
+      app/                     (App Router routes: phases, lesson, terminal, wizard)
+      components/
+      lib/                     (API client, WS clients, xterm wiring)
+      public/
+      package.json
+      tailwind.config.js       (presets: @learn/shared-tokens/tailwind-preset)
+      tsconfig.json
+  (The marketing/proof landing lives in its own repo: learn-landing.
+  Mobile native is deferred; the web app is responsive.)
 
   shared/                      (TS packages, imported as @learn/shared/*)
     api/                       (Zod schemas + TS types for HTTP + WS)
@@ -67,7 +78,7 @@ Audience: non-technical employees (ventas, marketing, HR, finanzas, legal, estra
     tokens/                    (design tokens, source of truth in tokens.json)
       package.json
       tokens.json              (FROZEN. Do not edit without architecture review.)
-      tokens.ts                (typed TS re-export for RN/web consumers)
+      tokens.ts                (typed TS re-export for web consumers)
       tailwind-preset.js       (generated; consumed by apps/*/tailwind.config.js)
       index.ts
     voice/                     (copy tables)
@@ -744,10 +755,21 @@ See section 4.3. Every handler returns either a 2xx with the typed response or a
 
 **Exit**: in docker-compose.dev stack, a VM cannot reach `google.com`, a VM with exhausted quota receives 429 from the Platform proxy, all secrets loaded via `doppler run -- ./learn-cp`.
 
-### Mobile agents (Agent-Convo + Agent-Path)
+### Agent-Web
 
-Deleted 2026-04-18 alongside the mobile app. The redesign will define its own
-agent scopes; until then, any work that would have landed here is blocked.
+**Scope**: `apps/web/` learner surface. Three-phase arc (Fundamentos, Terminal guiada, Autonomia), xterm.js terminal plus wizard sidebar, anonymous identity flow, progress UI, telemetry hooks (t-to-first-wow, phase completion, D3/D7/D14 retention).
+
+**Owns**:
+- `apps/web/app/**` (App Router routes)
+- `apps/web/components/**`
+- `apps/web/lib/api.ts` (typed client from `shared/api`)
+- `apps/web/lib/ws.ts` (wizard WS + PTY WS clients with reconnect)
+- `apps/web/lib/xterm.tsx` (terminal wiring to PTY WS)
+- `apps/web/lib/track.ts` (PostHog wrapper)
+
+**Consumes**: `shared/api/schemas`, `shared/api/events`, `shared/tokens`, `shared/voice`, `shared/lessons`.
+
+**Exit**: from a browser against the local dev stack, the learner completes `hello-claude.yml` end to end: enters anonymously, phase 1 concept screens resolve, phase 2 loads a real VM, a scaffolded prompt is sent to `claude-wrap`, tool-call cards stream in, `step_satisfied` arrives, the wizard advances, the session closes cleanly. Then the same flow against one converted lesson from the `learn-landing` 15-level catalog (candidate TBD in Fase 1 kickoff).
 
 ### Agent-Proof (out of scope for this monorepo)
 
