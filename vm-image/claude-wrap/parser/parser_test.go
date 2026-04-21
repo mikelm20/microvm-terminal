@@ -74,6 +74,47 @@ func TestParser_ToolResult(t *testing.T) {
 	}
 }
 
+// TestParser_Claude2_1Shape exercises stream-json shapes observed in Claude
+// Code 2.1.116: rate_limit_event envelopes, assistant messages that lead with
+// a `thinking` content block, tool_use with a `caller` field, and a result
+// envelope with is_error/duration_ms present. The parser must emit the canon
+// busy/tool_call/message/busy-off sequence without losing data to drift.
+func TestParser_Claude2_1Shape(t *testing.T) {
+	p := New()
+	var all []Event
+	lines := [][]byte{
+		[]byte(`{"type":"system","subtype":"init","session_id":"s1","cwd":"/home","tools":["Read","Bash"],"model":"claude-opus-4-7[1m]"}`),
+		[]byte(`{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"session_id":"s1"}`),
+		[]byte(`{"type":"assistant","message":{"id":"msg_1","role":"assistant","content":[{"type":"thinking","thinking":"","signature":"r"}]},"session_id":"s1"}`),
+		[]byte(`{"type":"assistant","message":{"id":"msg_1","role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Read","input":{"file_path":"/home/README.md"},"caller":{"type":"direct"}}]},"session_id":"s1"}`),
+		[]byte(`{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_1","type":"tool_result","content":"hello","is_error":false}]},"session_id":"s1"}`),
+		[]byte(`{"type":"assistant","message":{"id":"msg_2","role":"assistant","content":[{"type":"text","text":"done"}]},"session_id":"s1"}`),
+		[]byte(`{"type":"result","subtype":"success","is_error":false,"duration_ms":2000,"num_turns":2,"result":"done","session_id":"s1"}`),
+	}
+	for _, l := range lines {
+		all = append(all, p.Feed(l)...)
+	}
+	var busyOn, toolCall, toolResult, msg, busyOff bool
+	for _, e := range all {
+		switch {
+		case e.Type == "claude_busy" && e.Busy != nil && *e.Busy:
+			busyOn = true
+		case e.Type == "claude_tool_call" && e.Tool == "Read" && e.Path == "/home/README.md":
+			toolCall = true
+		case e.Type == "claude_tool_result" && e.CallID == "toolu_1" && e.OK != nil && *e.OK:
+			toolResult = true
+		case e.Type == "claude_message" && e.Role == "assistant" && e.Text == "done":
+			msg = true
+		case e.Type == "claude_busy" && e.Busy != nil && !*e.Busy:
+			busyOff = true
+		}
+	}
+	if !busyOn || !toolCall || !toolResult || !msg || !busyOff {
+		t.Fatalf("missing expected events: busyOn=%v toolCall=%v toolResult=%v msg=%v busyOff=%v all=%+v",
+			busyOn, toolCall, toolResult, msg, busyOff, all)
+	}
+}
+
 func TestParser_UserText(t *testing.T) {
 	p := New()
 	got := p.Feed([]byte(`{"type":"user","message":{"role":"user","content":[{"type":"text","text":"lee la carpeta 01-ventas"}]}}`))
