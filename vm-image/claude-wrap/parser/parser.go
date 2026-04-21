@@ -72,6 +72,12 @@ func (p *Parser) Feed(line []byte) []Event {
 		return p.onAssistant(env)
 	case "result":
 		return p.onResult(env)
+	case "rate_limit_event", "stream_event", "usage_event":
+		// Informational envelopes emitted by recent Claude Code CLI
+		// releases. They carry no content the wizard spine cares about.
+		// Listed explicitly so future drift stays visible, and so the
+		// silent no-op is intentional rather than coincidental.
+		return nil
 	}
 	return nil
 }
@@ -183,6 +189,12 @@ func (p *Parser) onAssistant(env streamjson.Envelope) []Event {
 					TotalChars: &total,
 				})
 			}
+		case "thinking":
+			// Claude Code 2.1+ emits `thinking` content blocks before text
+			// and tool_use inside the same assistant turn. We do not surface
+			// them to learners, but listing the case here prevents drift
+			// from sneaking through as a silent default.
+			continue
 		case "tool_use":
 			call := classifyTool(b.Name, b.Input)
 			call.Type = "claude_tool_call"

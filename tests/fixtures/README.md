@@ -50,3 +50,23 @@ validation still requires live replay.
 | m5-ver-subagentes-1.jsonl | m5 | ver-subagentes-vacios | SlashCommand |
 | m5-crear-jefe-agenda-1.jsonl | m5 | crear-jefe-de-agenda | Bash mkdir + Write |
 | m5-invocar-1.jsonl | m5 | invocar-jefe-de-agenda | Task w/ subagent |
+
+### hello-claude (smoke corpus)
+
+Under `claude/hello-claude/`, one file per lesson step, sorted by the
+numeric prefix. Each line is a `{wire, ...}` envelope: `wire=guest` is a
+synthesized guest-agent event (the VM watchers emit it, not Claude);
+`wire=streamjson` wraps one `claude --output-format stream-json` line the
+claude-wrap parser consumes.
+
+| File | Step | Predicate type | Source |
+|---|---|---|---|
+| 01-agent-online.jsonl | agent-online | agent_online | synthesized guest event |
+| 02-start-claude.jsonl | start-claude | process_started (name=claude) | synthesized guest event |
+| 03-run-server.jsonl | run-server | port_listening | synthesized guest event |
+| 04-first-prompt.jsonl | first-prompt | claude_prompt_sent | captured stream-json |
+| 05-first-tool-call.jsonl | first-tool-call | claude_tool_call (Read) | captured stream-json |
+
+Used by `tests/learner-bot` offline replay and as the canonical
+shape the integration test asserts against when driving a live
+Claude Code CLI.
