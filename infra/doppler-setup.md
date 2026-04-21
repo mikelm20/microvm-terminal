@@ -78,9 +78,13 @@ ExecStart=/usr/bin/doppler run --config prd --project learn-platform -- \
 ```
 
 Inside the process, environment variables are the only way to read secrets;
-there is no more `ClaudeOAuthTokenFile`, `AuthPasswordFile`, or
-`AuthCookieSecretFile`. Any code that still reads `/etc/learn-platform/*`
-files is a bug; grep for those paths and cut them out during the Gate merge.
+there is no more `ClaudeOAuthTokenFile` or `AuthCookieSecretFile`. Any code
+that still reads those paths is a bug; grep for them and cut them out during
+the Gate merge.
+
+`AuthPasswordFile` is the exception and stays on disk: the legacy MVP gate (`internal/auth/auth.go`) reads
+`/etc/learn-platform/auth-password`. Magic-link auth lives in
+`portal.example.com`, a separate product, not here.
 
 ### proxy
 
@@ -96,13 +100,6 @@ Systemd unit: see `infra/systemd/claude-proxy.service`. Secrets consumed:
 `.env.local` is git-ignored. For dev, `doppler run -- pnpm dev` works. For
 the self-hosted landing, the Caddy sidecar runs `doppler run -- next start`.
 
-### mobile
-
-Expo: values that must reach the client (public PostHog key, Sentry DSN) are
-exposed via `expo-constants.extra` populated by `doppler run -- pnpm start`.
-Private keys (none in the mobile scope today) are never pushed to the
-client.
-
 ## Sunset of `/etc/learn-platform`
 
 The following files are removed **after** Doppler migration succeeds on prd.
@@ -110,16 +107,19 @@ Bootstrap.sh no longer creates them. If any one of them still exists at
 service start, log a warning and refuse to start:
 
 - `/etc/learn-platform/claude-oauth-token` (replaced by `ANTHROPIC_API_KEYS`)
-- `/etc/learn-platform/auth-password` (replaced by magic-link accounts)
 - `/etc/learn-platform/auth-cookie-secret` (replaced by `SESSION_COOKIE_SECRET`)
+
+`/etc/learn-platform/auth-password` is intentionally retained: see the
+control-plane section above.
 
 The control plane no longer accepts these TOML keys:
 
 ```
 claude_oauth_token_file
-auth_password_file
 auth_cookie_secret_file
 ```
+
+`auth_password_file` is still accepted.
 
 Config.go reads from `os.Getenv` instead; `cmd/learn-cp/main.go` wires the
 Resend client, session HMAC, and API key pool off the environment.
