@@ -67,6 +67,8 @@ func NewRouter(deps Deps) http.Handler {
 	progressH := &progressHandler{deps: deps}
 	sessH := &sessionsHandler{deps: deps}
 	publicH := &publicHandler{deps: deps}
+	capstoneH := &capstoneHandler{deps: deps}
+	previewH := newPreviewHandler(deps)
 
 	r.Post("/identity", idH.Mint)
 	r.Post("/auth/magic-link", authH.RequestMagicLink)
@@ -91,6 +93,14 @@ func NewRouter(deps Deps) http.Handler {
 	r.Delete("/sessions/{id}", sessH.Delete)
 	r.Get("/sessions/{id}/ws", sessH.WS)
 	r.Get("/sessions/{id}/pty", sessH.PTY)
+
+	// Capstone (F2 Lab closing flow). Validator + Builder VMs, plus a
+	// reverse-proxy preview path so the mini-app renders in an iframe on
+	// learn.example.com. See internal/api/capstone.go and preview.go.
+	r.Post("/capstone/validate", capstoneH.Validate)
+	r.Post("/capstone/build", capstoneH.Build)
+	r.Handle("/sessions/{id}/preview/{port}/*", previewH)
+	r.Handle("/sessions/{id}/preview/{port}", previewH)
 
 	r.Get("/p/{uuid}/public", publicH.Profile)
 	r.Get("/certificate/{id}/public", publicH.Certificate)
