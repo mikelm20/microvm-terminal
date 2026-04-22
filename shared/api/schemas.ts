@@ -209,3 +209,38 @@ export const PublicCertificateResponse = z.object({
   modules: z.array(z.string()),
 });
 export type PublicCertificateResponse = z.infer<typeof PublicCertificateResponse>;
+
+// capstone (F2 Lab closing flow)
+// Validate: short-lived Platform validator VM reads the learner's brief, replies
+// with strict JSON {ok, reason?}. Endpoint is POST /capstone/validate.
+export const CapstoneValidateRequest = z.object({
+  prompt: z.string().min(1).max(500),
+  lang: LangSchema.optional(),
+  topic_hint: z.string().optional(),
+});
+export type CapstoneValidateRequest = z.infer<typeof CapstoneValidateRequest>;
+
+export const CapstoneValidateResponse = z.object({
+  ok: z.boolean(),
+  reason: z.string().optional(),
+});
+export type CapstoneValidateResponse = z.infer<typeof CapstoneValidateResponse>;
+
+// Build: long-lived builder VM receives the injection-wrapped brief and
+// Claude writes files + launches python3 -m http.server 3000. Endpoint is
+// POST /capstone/build. Response carries enough to mount the wizard WS +
+// preview iframe on the client.
+export const CapstoneBuildRequest = z.object({
+  prompt: z.string().min(1).max(500),
+  lang: LangSchema.optional(),
+});
+export type CapstoneBuildRequest = z.infer<typeof CapstoneBuildRequest>;
+
+export const CapstoneBuildResponse = z.object({
+  session_id: z.string().uuid(),
+  vm_ip: z.string(),
+  wizard_ws_url: z.string().url(),
+  preview_url_template: z.string(),
+  turn_id: z.string(),
+});
+export type CapstoneBuildResponse = z.infer<typeof CapstoneBuildResponse>;
