@@ -133,6 +133,20 @@ export const SessionClosedEvent = BaseEvent.extend({
   reason: z.enum(["user_closed", "grace_expired", "reaped", "crashed"]),
 });
 
+// files_snapshot: emitted by the Capstone builder flow after Claude writes
+// the mini-app files and the guest-agent responds to a list request. Lets
+// the frontend show a real "Explore" sidebar so the learner sees actual code,
+// not a black box.
+export const FilesSnapshotEvent = BaseEvent.extend({
+  type: z.literal("files_snapshot"),
+  root: z.string(),
+  files: z.array(z.object({
+    path: z.string(),
+    content: z.string(),
+    size_bytes: z.number().int(),
+  })),
+});
+
 export const WsEvent = z.discriminatedUnion("type", [
   SessionStartedEvent,
   VmBootingEvent,
@@ -153,5 +167,6 @@ export const WsEvent = z.discriminatedUnion("type", [
   StepSatisfiedEvent,
   SessionErrorEvent,
   SessionClosedEvent,
+  FilesSnapshotEvent,
 ]);
 export type WsEvent = z.infer<typeof WsEvent>;

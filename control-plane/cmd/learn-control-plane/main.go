@@ -184,21 +184,36 @@ func pickLauncher(cfg config.Config, logger *slog.Logger) (session.Launcher, err
 	if boot <= 0 {
 		boot = 90 * time.Second
 	}
-	return session.LauncherFunc(func(ctx context.Context) (*session.Session, error) {
-		s, err := mgr.Create(ctx)
-		if err != nil {
-			return nil, err
-		}
-		waitCtx, cancel := context.WithTimeout(ctx, boot)
-		defer cancel()
-		if err := s.WaitReady(waitCtx); err != nil {
-			logger.Error("vm did not become ready within boot timeout",
-				"session", s.ID, "timeout", boot, "err", err)
-			_ = mgr.Destroy(s.ID)
-			return nil, session.ErrBootTimeout
-		}
-		return s, nil
-	}), nil
+	return &managerLauncher{mgr: mgr, boot: boot, logger: logger}, nil
+}
+
+// managerLauncher adapts *session.Manager to both Launcher and OptionsLauncher.
+// Plain Launch preserves the F2 path (warm pool + legacy Create); LaunchWith
+// forwards CreateOptions so Capstone handlers can pass RootfsOverrides.
+type managerLauncher struct {
+	mgr    *session.Manager
+	boot   time.Duration
+	logger *slog.Logger
+}
+
+func (a *managerLauncher) Launch(ctx context.Context) (*session.Session, error) {
+	return a.LaunchWith(ctx, session.CreateOptions{})
+}
+
+func (a *managerLauncher) LaunchWith(ctx context.Context, opts session.CreateOptions) (*session.Session, error) {
+	s, err := a.mgr.CreateWith(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, a.boot)
+	defer cancel()
+	if err := s.WaitReady(waitCtx); err != nil {
+		a.logger.Error("vm did not become ready within boot timeout",
+			"session", s.ID, "timeout", a.boot, "err", err)
+		_ = a.mgr.Destroy(s.ID)
+		return nil, session.ErrBootTimeout
+	}
+	return s, nil
 }
 
 func loadOrMintSecret(hex32 string, logger *slog.Logger) ([]byte, error) {

@@ -12,6 +12,7 @@ import (
 // be exercised without Firecracker.
 type SessionHost interface {
 	Create(ctx context.Context) (*session.Session, error)
+	CreateWith(ctx context.Context, opts session.CreateOptions) (*session.Session, error)
 	CreateWarm(ctx context.Context) (*session.Session, error)
 	Get(id string) (*session.Session, bool)
 	Destroy(id string) error

@@ -365,7 +365,49 @@ const (
 	WsEventStepSatisfied      WsEventType = "step_satisfied"
 	WsEventSessionError       WsEventType = "session_error"
 	WsEventSessionClosed      WsEventType = "session_closed"
+	WsEventFilesSnapshot      WsEventType = "files_snapshot"
 )
+
+// CapstoneValidateRequest mirrors shared/api/schemas.ts CapstoneValidateRequest.
+// Manually added; the codegen run needs a Node toolchain. Next `pnpm codegen:api`
+// regeneration is idempotent.
+type CapstoneValidateRequest struct {
+	Prompt    string  `json:"prompt"`
+	Lang      *string `json:"lang,omitempty"`
+	TopicHint *string `json:"topic_hint,omitempty"`
+}
+
+type CapstoneValidateResponse struct {
+	Ok     bool    `json:"ok"`
+	Reason *string `json:"reason,omitempty"`
+}
+
+type CapstoneBuildRequest struct {
+	Prompt string  `json:"prompt"`
+	Lang   *string `json:"lang,omitempty"`
+}
+
+type CapstoneBuildResponse struct {
+	SessionID          string `json:"session_id"`
+	VMIP               string `json:"vm_ip"`
+	WizardWSURL        string `json:"wizard_ws_url"`
+	PreviewURLTemplate string `json:"preview_url_template"`
+	TurnID             string `json:"turn_id"`
+}
+
+// FilesSnapshotFile is one entry in the files_snapshot event payload.
+type FilesSnapshotFile struct {
+	Path      string `json:"path"`
+	Content   string `json:"content"`
+	SizeBytes int    `json:"size_bytes"`
+}
+
+type FilesSnapshotEvent struct {
+	TS    string              `json:"ts"`
+	Type  string              `json:"type"`
+	Root  string              `json:"root"`
+	Files []FilesSnapshotFile `json:"files"`
+}
 
 // ApiErrorCode enumerates every known control-plane error code. Mirrors the
 // ApiErrorCode enum in shared/api/errors.ts.
