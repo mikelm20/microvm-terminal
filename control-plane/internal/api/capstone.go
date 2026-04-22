@@ -280,16 +280,15 @@ func (h *capstoneHandler) Build(w http.ResponseWriter, r *http.Request) {
 	// in the brief itself (the template already expects a single line).
 	oneLine := strings.TrimSpace(briefOneLine(brief))
 	full := fmt.Sprintf("Construye ahora la mini-app descrita en este brief (no respondas nada mas, ponte a trabajar): %q", oneLine)
-	// Feed the line to the learner's shell. claude-wrap trims and forwards.
+	// Same stdin timing fix as the validator: write the brief and keep
+	// re-writing every few seconds until claude-wrap echoes the event (or
+	// until we give up). Returns fast; the retry loop runs in a goroutine.
 	if s.Process != nil {
-		_, werr := s.Process.Stdin().Write([]byte(full + "\n"))
-		if werr != nil {
-			h.deps.Logger.Error("capstone build: write prompt", "err", werr)
-		}
+		go retryWriteUntilEchoed(s, full, 60*time.Second, h.deps.Logger)
 	}
 	turnID := uuid.NewString()
 	s.Events.Publish(session.GuestEvent{
-		Type: "claude_prompt_sent",
+		Type: "capstone_prompt_posted",
 		TS:   time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: map[string]any{
 			"text":    full,
@@ -311,6 +310,46 @@ func (h *capstoneHandler) Build(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// retryWriteUntilEchoed writes `line` to the VM's serial and keeps
+// re-writing every 5s until claude-wrap publishes claude_prompt_sent
+// (confirming it saw the line) or `budget` elapses. Lives in a goroutine
+// fired from the Build handler; the validator has its own inline version.
+func retryWriteUntilEchoed(s *session.Session, line string, budget time.Duration, logger interface{ Warn(string, ...any) }) {
+	_, updates, detach := s.Events.Subscribe(64)
+	defer detach()
+
+	write := func() {
+		if s.Process == nil {
+			return
+		}
+		_, _ = s.Process.Stdin().Write([]byte(line + "\n"))
+	}
+	write()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	deadline := time.NewTimer(budget)
+	defer deadline.Stop()
+
+	for {
+		select {
+		case <-deadline.C:
+			logger.Warn("capstone build: prompt never echoed", "session", s.ID)
+			return
+		case <-s.Done():
+			return
+		case <-ticker.C:
+			write()
+		case ev, ok := <-updates:
+			if !ok {
+				return
+			}
+			if ev.Type == "claude_prompt_sent" {
+				return
+			}
+		}
+	}
+}
+
 // briefOneLine replaces newlines with spaces so the injection template
 // reaches claude-wrap as a single stdin line. Whitespace is collapsed too.
 func briefOneLine(s string) string {
@@ -329,30 +368,46 @@ func briefOneLine(s string) string {
 func callValidator(ctx context.Context, s *session.Session, brief string) (apitypes.CapstoneValidateResponse, error) {
 	// The wizard bus is where claude-wrap publishes claude_message; that's
 	// the canonical place to read the validator's reply from.
-	_, updates, detach := s.Events.Subscribe(32)
+	_, updates, detach := s.Events.Subscribe(64)
 	defer detach()
 
 	oneLine := briefOneLine(brief)
 	if s.Process == nil {
 		return apitypes.CapstoneValidateResponse{}, errors.New("vm has no stdin")
 	}
-	if _, err := s.Process.Stdin().Write([]byte(oneLine + "\n")); err != nil {
-		return apitypes.CapstoneValidateResponse{}, fmt.Errorf("write prompt: %w", err)
-	}
 
-	// Wait long enough for Claude to emit the single-line JSON verdict on a
-	// freshly-booted validator VM. The outer handler context bounds the
-	// total flight time; this just prevents us from hanging forever if the
-	// wizard bus goes quiet.
+	// Writing to the serial at session_ready lands in the tty buffer, but
+	// claude-wrap may not be reading stdin yet (getty + login + learn-shell
+	// + claude-wrap startup runs for a few seconds after guest-agent has
+	// already come online). If the bytes land before claude-wrap's Scanner
+	// attaches they are silently dropped. Workaround: re-write the brief
+	// every few seconds until claude-wrap echoes claude_prompt_sent,
+	// confirming it parsed the line.
+	writeBrief := func() {
+		_, _ = s.Process.Stdin().Write([]byte(oneLine + "\n"))
+	}
+	writeBrief()
+	retry := time.NewTicker(5 * time.Second)
+	defer retry.Stop()
+	promptEchoed := false
+
 	waitCtx, cancel := context.WithTimeout(ctx, 150*time.Second)
 	defer cancel()
 	for {
 		select {
 		case <-waitCtx.Done():
 			return apitypes.CapstoneValidateResponse{}, errors.New("validator timeout")
+		case <-retry.C:
+			if !promptEchoed {
+				writeBrief()
+			}
 		case ev, ok := <-updates:
 			if !ok {
 				return apitypes.CapstoneValidateResponse{}, errors.New("event bus closed")
+			}
+			if ev.Type == "claude_prompt_sent" {
+				promptEchoed = true
+				continue
 			}
 			if ev.Type != "claude_message" {
 				continue
