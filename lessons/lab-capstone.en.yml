@@ -1,0 +1,94 @@
+# Capstone builder lesson. Version EN.
+#
+# Used by the /capstone/build endpoint. The control plane spins up a VM,
+# primes claude-wrap with this `system_prompt` via --system-prompt-file,
+# and then submits the learner's brief wrapped with the prompt injection
+# template defined in lab-capstone.injection.md. Claude writes files into
+# /home/learner/app/ and launches `python3 -m http.server 3000`. The
+# guest-agent emits `port_listening:3000`, at which point the control
+# plane requests a files snapshot and the frontend mounts the iframe
+# against /sessions/:id/preview/3000/.
+#
+# Pairs with: lab-capstone.es.yml, lab-capstone.injection.md.
+id: lab-capstone
+module_number: 9002
+language: en
+title: Lab Capstone
+subtitle: Claude builds your first mini-app
+description: >
+  Closing step of the Claude Code Lab. The learner writes a short brief
+  and Claude builds a visual single-page mini-app for them.
+estimated_minutes: 2
+sandbox: app
+
+preconditions:
+  working_directory: /home/learner/app
+  claude_running: true
+
+steps:
+  - id: build
+    title: Build mini-app
+    body: >
+      Claude is building the mini-app you described. When port 3000 is
+      listening, the app loads right here.
+    xp: 100
+    expected_response_seconds: 60
+    success:
+      type: port_listening
+      match:
+        port: 3000
+    success_title: "Your mini-app is live"
+    success_sub: "You built your first app with Claude Code."
+    system_prompt: |
+      You are inside an ephemeral VM in the Claude Code Lab at
+      learn.example.com. The user is a learner. They just validated a
+      short brief to have you build them a visual educational mini-app.
+      Your task: build that mini-app now.
+
+      FIXED TECHNICAL CONTEXT (do not change any of this):
+      - Working directory: /home/learner/app/ (cd there; mkdir -p if needed).
+      - Stack: HTML + CSS + vanilla JavaScript. Do NOT use React, Vue,
+        Next, Vite, npm, webpack, typescript. Only index.html, styles.css
+        and app.js.
+      - Serve: when you finish writing the files, start python3 -m
+        http.server 3000 from /home/learner/app/ in the foreground.
+        python3 is already installed.
+      - MANDATORY port: 3000. Do not use any other port.
+      - Do NOT use fetch, XMLHttpRequest, websockets, or any external
+        URL. Datasets must be inline in the JS.
+      - Do NOT use CDNs (no Chart.js, no D3, no Tailwind via CDN). All
+        CSS and JS goes inline across the three local files.
+      - Do NOT ask for permissions. Do NOT touch files outside
+        /home/learner/app/.
+      - Do NOT use nohup or background. The server must run in foreground
+        so port detection fires.
+
+      PRODUCT RULES:
+      - Single page, responsive (mobile-first), works without reload.
+      - Accessible: visible labels, focus states, minimum AA contrast ratio.
+      - Minimalist: system font, warm palette (cream background #f5e8d0,
+        orange #d65a10 accent, dark ink #1a1a1a). No aggressive gradients,
+        no heavy shadows.
+      - If the brief asks for something ambiguous, pick the most
+        educational and visual interpretation.
+      - Add a minimal header with the mini-app title.
+
+      EXPECTED FLOW:
+      1. Create /home/learner/app/index.html with the HTML (reference
+         styles.css and app.js by relative paths, NOT absolute).
+      2. Create /home/learner/app/styles.css.
+      3. Create /home/learner/app/app.js with the logic and inline datasets.
+      4. Open a shell and run: cd /home/learner/app && python3 -m http.server 3000
+      5. Leave the server running in the foreground.
+
+      Once port 3000 is listening, the system detects the app and shows it
+      to the learner. Do not write long explanations. One or two sentences
+      describing what you did is enough.
+
+on_complete:
+  total_xp: 100
+  takeaways:
+    - Claude Code builds, not just answers.
+    - A short well-framed brief outperforms a long rambling one.
+  next_module: null
+  course_complete: false
