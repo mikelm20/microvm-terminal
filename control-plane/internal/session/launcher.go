@@ -12,6 +12,13 @@ type Launcher interface {
 	Launch(ctx context.Context) (*Session, error)
 }
 
+// OptionsLauncher is the optional richer surface the Host probes for when
+// CreateOptions are provided. Production Manager implements it via a thin
+// adapter; mock launchers can safely ignore it and fall back to plain Launch.
+type OptionsLauncher interface {
+	LaunchWith(ctx context.Context, opts CreateOptions) (*Session, error)
+}
+
 // LauncherFunc adapts a function into a Launcher.
 type LauncherFunc func(ctx context.Context) (*Session, error)
 

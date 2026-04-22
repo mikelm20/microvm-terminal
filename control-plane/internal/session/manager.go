@@ -61,10 +61,25 @@ func NewManager(cfg config.Config, logger *slog.Logger) (*Manager, error) {
 	}, nil
 }
 
+// CreateOptions are the tunable inputs Create exposes. Zero values produce
+// the default F2 lab VM (stock rootfs, empresa-prueba cwd, no system prompt
+// priming). Capstone handlers populate fields to override.
+type CreateOptions struct {
+	// RootfsOverrides is passed to PrepareRootfs. An empty struct means
+	// "use the baked learn-shell and baked CLAUDE.md only".
+	RootfsOverrides firecracker.RootfsOverrides
+}
+
 // Create allocates resources, prepares a per-VM rootfs, launches Firecracker,
 // and returns a Session ready for PTY attachment. The ctx parameter bounds the
 // creation sequence (rootfs prep, process start) but NOT the VM lifetime.
 func (m *Manager) Create(ctx context.Context) (*Session, error) {
+	return m.CreateWith(ctx, CreateOptions{})
+}
+
+// CreateWith is the overridable entry point. Kept separate from Create to
+// avoid churning every test call site when new options are added.
+func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session, error) {
 	_ = ctx // used for cancelling the prep steps via their own timeouts; VM lifetime is manager-owned
 	m.mu.Lock()
 	if len(m.sessions) >= m.cfg.MaxConcurrent {
@@ -108,7 +123,7 @@ func (m *Manager) Create(ctx context.Context) (*Session, error) {
 	}
 
 	hostname := fmt.Sprintf("learn-vm-%s", shortID(sid))
-	if err := firecracker.PrepareRootfs(m.cfg.RootfsPath, rootfs, ip, m.allocator.PrefixLen(), m.allocator.HostAddr(), hostname, token); err != nil {
+	if err := firecracker.PrepareRootfs(m.cfg.RootfsPath, rootfs, ip, m.allocator.PrefixLen(), m.allocator.HostAddr(), hostname, token, opts.RootfsOverrides); err != nil {
 		cleanup(vmDir, tap, m.allocator, ip)
 		return nil, fmt.Errorf("prepare rootfs: %w", err)
 	}

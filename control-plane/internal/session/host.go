@@ -37,6 +37,13 @@ func NewHost(launcher Launcher, pool *WarmPool, maxLive int, logger *slog.Logger
 }
 
 func (h *Host) Create(ctx context.Context) (*Session, error) {
+	return h.CreateWith(ctx, CreateOptions{})
+}
+
+// CreateWith launches a session using the given options. If the underlying
+// Launcher is an OptionsLauncher (the production Manager via managerLauncher)
+// the options are forwarded; otherwise they are ignored (tests / mocks).
+func (h *Host) CreateWith(ctx context.Context, opts CreateOptions) (*Session, error) {
 	h.mu.Lock()
 	if len(h.sessions) >= h.maxLive {
 		h.mu.Unlock()
@@ -44,7 +51,15 @@ func (h *Host) Create(ctx context.Context) (*Session, error) {
 	}
 	h.mu.Unlock()
 
-	s, err := h.launcher.Launch(ctx)
+	var (
+		s   *Session
+		err error
+	)
+	if ol, ok := h.launcher.(OptionsLauncher); ok {
+		s, err = ol.LaunchWith(ctx, opts)
+	} else {
+		s, err = h.launcher.Launch(ctx)
+	}
 	if err != nil {
 		return nil, err
 	}
