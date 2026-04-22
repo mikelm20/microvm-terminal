@@ -132,10 +132,11 @@ func (h *capstoneHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We cap the whole validate flow at 75s: cold boot (~30s worst case) +
-	// Claude turn (~10s single line JSON) + teardown. If this slips, the
-	// UI shows "retry" rather than hanging.
-	ctx, cancel := context.WithTimeout(r.Context(), 75*time.Second)
+	// Generous cap on the whole validate flow. Cold boot can be 30-60s when
+	// the host is saturated, Claude's verdict turn adds another 10-30s. We
+	// keep the frontend animation long enough to cover this so learners see
+	// a streaming verification rather than a spinner.
+	ctx, cancel := context.WithTimeout(r.Context(), 180*time.Second)
 	defer cancel()
 
 	s, err := h.deps.Host.CreateWith(ctx, session.CreateOptions{
@@ -207,7 +208,7 @@ func (h *capstoneHandler) Build(w http.ResponseWriter, r *http.Request) {
 	// Builder VM boot deadline only. Once the VM is up and the prompt has
 	// been written to serial, the frontend owns the wait (tailing the
 	// wizard WS for port_listening).
-	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 180*time.Second)
 	defer cancel()
 
 	s, err := h.deps.Host.CreateWith(ctx, session.CreateOptions{
@@ -339,7 +340,11 @@ func callValidator(ctx context.Context, s *session.Session, brief string) (apity
 		return apitypes.CapstoneValidateResponse{}, fmt.Errorf("write prompt: %w", err)
 	}
 
-	waitCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	// Wait long enough for Claude to emit the single-line JSON verdict on a
+	// freshly-booted validator VM. The outer handler context bounds the
+	// total flight time; this just prevents us from hanging forever if the
+	// wizard bus goes quiet.
+	waitCtx, cancel := context.WithTimeout(ctx, 150*time.Second)
 	defer cancel()
 	for {
 		select {
@@ -454,7 +459,7 @@ func sqlNullStringFrom(s string) sql.NullString {
 // `files_snapshot` event on the same bus. Runs in its own goroutine with
 // a hard deadline.
 func watchPortAndSnapshot(s *session.Session, logger interface{ Warn(string, ...any) }, targetPort int) {
-	deadline := time.NewTimer(120 * time.Second)
+	deadline := time.NewTimer(240 * time.Second)
 	defer deadline.Stop()
 	_, updates, detach := s.Events.Subscribe(32)
 	defer detach()
