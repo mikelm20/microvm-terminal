@@ -132,10 +132,10 @@ func (h *capstoneHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We cap the whole validate flow at 45s: boot (~15s warm, ~25s cold) +
-	// Claude turn (~5s haiku-ish) + teardown. If this slips, the UI shows
-	// "retry" rather than hanging.
-	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+	// We cap the whole validate flow at 75s: cold boot (~30s worst case) +
+	// Claude turn (~10s single line JSON) + teardown. If this slips, the
+	// UI shows "retry" rather than hanging.
+	ctx, cancel := context.WithTimeout(r.Context(), 75*time.Second)
 	defer cancel()
 
 	s, err := h.deps.Host.CreateWith(ctx, session.CreateOptions{
@@ -204,7 +204,10 @@ func (h *capstoneHandler) Build(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	// Builder VM boot deadline only. Once the VM is up and the prompt has
+	// been written to serial, the frontend owns the wait (tailing the
+	// wizard WS for port_listening).
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 
 	s, err := h.deps.Host.CreateWith(ctx, session.CreateOptions{
