@@ -159,7 +159,10 @@ func (g *Gate) buildCookie() *http.Cookie {
 		Path:     "/",
 		Secure:   true,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		// Lax so the cookie is delivered on the iframe load of the capstone
+		// preview proxy (api.learn.example.com embedded in learn.example.com).
+		// /lab/login is POST-only so Lax still blocks CSRF.
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(CookieMaxAge.Seconds()),
 	}
 	if g.cookieDomain != "" {

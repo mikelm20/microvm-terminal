@@ -34,6 +34,12 @@ func (h *identityHandler) Mint(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		supplied = &parsed
+	} else if existing, ok := identity.FromContext(r.Context()); ok {
+		// Preserve the UUID the caller already carries via learn_identity
+		// cookie (resolved by identity.Middleware). Without this, every
+		// /identity call mints a fresh UUID and orphans the learner's
+		// progress history.
+		supplied = &existing
 	}
 
 	id, err := identity.MintOrReattest(r.Context(), h.deps.Store, supplied, string(req.Lang))

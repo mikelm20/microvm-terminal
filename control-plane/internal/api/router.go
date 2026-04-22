@@ -81,26 +81,41 @@ func NewRouter(deps Deps) http.Handler {
 	r.Get("/lessons", lessonsH.List)
 	r.Get("/lessons/{id}", lessonsH.Get)
 
-	r.Post("/progress/sync", progressH.Sync)
-	r.Get("/progress", progressH.Get)
+	// Legacy auth gate for the Claude Code Lab. Intro stays open;
+	// any endpoint that boots a VM or talks to one is wrapped below. The
+	// routes here let the landing mint + check the learn_auth cookie.
+	if deps.LegacyGate != nil {
+		r.Post("/lab/login", deps.LegacyGate.LoginHandler())
+		r.Post("/lab/logout", deps.LegacyGate.LogoutHandler())
+		r.Get("/lab/auth/check", deps.LegacyGate.CheckHandler())
+	}
 
-	r.Post("/sessions", sessH.Create)
-	r.Get("/sessions/{id}", sessH.Describe)
-	r.Get("/sessions/{id}/heartbeat", sessH.Heartbeat)
-	r.Get("/sessions/{id}/transcript", sessH.Transcript)
-	r.Post("/sessions/{id}/prompt", sessH.SubmitPrompt)
-	r.Post("/sessions/{id}/attach", sessH.Attach)
-	r.Delete("/sessions/{id}", sessH.Delete)
-	r.Get("/sessions/{id}/ws", sessH.WS)
-	r.Get("/sessions/{id}/pty", sessH.PTY)
+	r.Group(func(r chi.Router) {
+		if deps.LegacyGate != nil {
+			r.Use(deps.LegacyGate.Middleware)
+		}
 
-	// Capstone (F2 Lab closing flow). Validator + Builder VMs, plus a
-	// reverse-proxy preview path so the mini-app renders in an iframe on
-	// learn.example.com. See internal/api/capstone.go and preview.go.
-	r.Post("/capstone/validate", capstoneH.Validate)
-	r.Post("/capstone/build", capstoneH.Build)
-	r.Handle("/sessions/{id}/preview/{port}/*", previewH)
-	r.Handle("/sessions/{id}/preview/{port}", previewH)
+		r.Post("/progress/sync", progressH.Sync)
+		r.Get("/progress", progressH.Get)
+
+		r.Post("/sessions", sessH.Create)
+		r.Get("/sessions/{id}", sessH.Describe)
+		r.Get("/sessions/{id}/heartbeat", sessH.Heartbeat)
+		r.Get("/sessions/{id}/transcript", sessH.Transcript)
+		r.Post("/sessions/{id}/prompt", sessH.SubmitPrompt)
+		r.Post("/sessions/{id}/attach", sessH.Attach)
+		r.Delete("/sessions/{id}", sessH.Delete)
+		r.Get("/sessions/{id}/ws", sessH.WS)
+		r.Get("/sessions/{id}/pty", sessH.PTY)
+
+		// Capstone (F2 Lab closing flow). Validator + Builder VMs, plus a
+		// reverse-proxy preview path so the mini-app renders in an iframe on
+		// learn.example.com. See internal/api/capstone.go and preview.go.
+		r.Post("/capstone/validate", capstoneH.Validate)
+		r.Post("/capstone/build", capstoneH.Build)
+		r.Handle("/sessions/{id}/preview/{port}/*", previewH)
+		r.Handle("/sessions/{id}/preview/{port}", previewH)
+	})
 
 	r.Get("/p/{uuid}/public", publicH.Profile)
 	r.Get("/certificate/{id}/public", publicH.Certificate)
