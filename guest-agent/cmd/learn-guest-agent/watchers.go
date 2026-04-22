@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -20,6 +22,75 @@ type fileWatchSpec struct {
 	Path    string `json:"path"`
 	RegexID string `json:"regex_id,omitempty"`
 	Regex   string `json:"regex,omitempty"`
+}
+
+// snapshotFile is one entry in the files_snapshot event payload.
+type snapshotFile struct {
+	Path      string `json:"path"`
+	Content   string `json:"content"`
+	SizeBytes int    `json:"size_bytes"`
+}
+
+// snapshotFiles walks root up to maxDepth, reads up to maxFiles files each
+// capped at maxBytes bytes, and returns the collected slice. Returns whatever
+// it could read on partial failure; the caller does not block the wider
+// event flow over a directory not existing.
+//
+// Skips hidden entries and .git-like noise. Paths are returned relative to
+// root so the frontend can group them cleanly ("index.html" vs full path).
+func snapshotFiles(root string, maxBytes, maxFiles, maxDepth int) []snapshotFile {
+	out := make([]snapshotFile, 0, maxFiles)
+	info, err := os.Stat(root)
+	if err != nil || !info.IsDir() {
+		return out
+	}
+	type queued struct {
+		path  string
+		depth int
+	}
+	queue := []queued{{path: root, depth: 0}}
+	for len(queue) > 0 && len(out) < maxFiles {
+		head := queue[0]
+		queue = queue[1:]
+		entries, err := os.ReadDir(head.path)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if strings.HasPrefix(name, ".") || name == "node_modules" || name == "__pycache__" {
+				continue
+			}
+			full := filepath.Join(head.path, name)
+			if e.IsDir() {
+				if head.depth+1 < maxDepth {
+					queue = append(queue, queued{path: full, depth: head.depth + 1})
+				}
+				continue
+			}
+			if len(out) >= maxFiles {
+				break
+			}
+			b, err := os.ReadFile(full)
+			if err != nil {
+				continue
+			}
+			orig := len(b)
+			if orig > maxBytes {
+				b = b[:maxBytes]
+			}
+			rel, rerr := filepath.Rel(root, full)
+			if rerr != nil {
+				rel = full
+			}
+			out = append(out, snapshotFile{
+				Path:      rel,
+				Content:   string(b),
+				SizeBytes: orig,
+			})
+		}
+	}
+	return out
 }
 
 // watchClaudeWrap dials the Unix socket that claude-wrap publishes events on,

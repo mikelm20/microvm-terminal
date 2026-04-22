@@ -81,8 +81,9 @@ func main() {
 	go watchFileContentsRegex(events, regexSpecs)
 
 	// Config reader: the control plane can push lesson predicate sets to us
-	// over the same vsock connection as JSON frames with type "config".
-	go readConfig(conn, filePaths, regexSpecs)
+	// over the same vsock connection as JSON frames with type "config",
+	// and snapshot_files requests that publish a synthetic event back out.
+	go readConfig(conn, filePaths, regexSpecs, events)
 
 	for e := range events {
 		if err := enc.Encode(e); err != nil {
@@ -95,7 +96,7 @@ func main() {
 				if reErr == nil {
 					enc = json.NewEncoder(conn)
 					_ = enc.Encode(event{Type: "hello", TS: nowRFC3339(), Session: sessionToken, Payload: map[string]any{"hostname": mustHostname(), "reconnect": true}})
-					go readConfig(conn, filePaths, regexSpecs)
+					go readConfig(conn, filePaths, regexSpecs, events)
 					break
 				}
 				log.Printf("redial: %v", reErr)
@@ -105,28 +106,66 @@ func main() {
 }
 
 // readConfig decodes messages the control plane pushes down the vsock
-// connection. Today the only recognized type is "config" with a payload
-// containing file_watches (string array) and regex_watches (fileWatchSpec
-// array). Unknown types are silently ignored for forward compatibility.
-func readConfig(conn net.Conn, filePaths chan<- []string, regexSpecs chan<- []fileWatchSpec) {
-	type configMsg struct {
-		Type    string `json:"type"`
-		Payload struct {
-			FileWatches  []string        `json:"file_watches"`
-			RegexWatches []fileWatchSpec `json:"regex_watches"`
-		} `json:"payload"`
+// connection. Recognized types:
+//   - config: `file_watches` + `regex_watches` update the active lesson
+//     predicate set.
+//   - snapshot_files: asks the agent to walk a directory and publish a
+//     `files_snapshot` event on the outgoing channel. Used by the Capstone
+//     flow after port_listening:3000 so the frontend can show the code
+//     Claude just wrote.
+//
+// Unknown types are silently ignored for forward compatibility.
+func readConfig(conn net.Conn, filePaths chan<- []string, regexSpecs chan<- []fileWatchSpec, events chan<- event) {
+	type snapshotReq struct {
+		Root     string `json:"root"`
+		MaxBytes int    `json:"max_bytes"`
+		MaxFiles int    `json:"max_files"`
+		MaxDepth int    `json:"max_depth"`
+	}
+	type msg struct {
+		Type    string          `json:"type"`
+		Payload json.RawMessage `json:"payload"`
 	}
 	dec := json.NewDecoder(conn)
 	for {
-		var m configMsg
+		var m msg
 		if err := dec.Decode(&m); err != nil {
 			return
 		}
-		if m.Type != "config" {
-			continue
+		switch m.Type {
+		case "config":
+			var p struct {
+				FileWatches  []string        `json:"file_watches"`
+				RegexWatches []fileWatchSpec `json:"regex_watches"`
+			}
+			_ = json.Unmarshal(m.Payload, &p)
+			filePaths <- p.FileWatches
+			regexSpecs <- p.RegexWatches
+		case "snapshot_files":
+			var p snapshotReq
+			_ = json.Unmarshal(m.Payload, &p)
+			if p.Root == "" {
+				continue
+			}
+			if p.MaxBytes <= 0 {
+				p.MaxBytes = 64 * 1024
+			}
+			if p.MaxFiles <= 0 {
+				p.MaxFiles = 32
+			}
+			if p.MaxDepth <= 0 {
+				p.MaxDepth = 4
+			}
+			files := snapshotFiles(p.Root, p.MaxBytes, p.MaxFiles, p.MaxDepth)
+			events <- event{
+				Type: "files_snapshot",
+				TS:   nowRFC3339(),
+				Payload: map[string]any{
+					"root":  p.Root,
+					"files": files,
+				},
+			}
 		}
-		filePaths <- m.Payload.FileWatches
-		regexSpecs <- m.Payload.RegexWatches
 	}
 }
 
