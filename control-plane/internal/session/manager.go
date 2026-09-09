@@ -241,8 +241,10 @@ func (m *Manager) Destroy(id string) error {
 	delete(m.sessions, id)
 	m.mu.Unlock()
 
-	// Signal listeners (vsock, wizard WS) to stop.
-	close(s.done)
+	// Signal listeners (vsock, wizard WS) to stop. CloseDone is guarded by
+	// a sync.Once because Host.Destroy and the reaper goroutine in CreateWith
+	// can both reach here for the same session.
+	s.CloseDone()
 
 	_ = s.Process.Stop()
 	_ = firecracker.DeleteTAP(s.Tap)
@@ -274,11 +276,11 @@ func (m *Manager) Count() int {
 }
 
 var (
-	ErrAtCapacity     = errors.New("session pool at capacity")
-	ErrNotFound       = errors.New("session not found")
-	ErrNoGuest        = errors.New("no guest-agent attached")
-	ErrSessionClosed  = errors.New("session closed")
-	ErrBootTimeout    = errors.New("vm boot timed out waiting for guest-agent handshake")
+	ErrAtCapacity    = errors.New("session pool at capacity")
+	ErrNotFound      = errors.New("session not found")
+	ErrNoGuest       = errors.New("no guest-agent attached")
+	ErrSessionClosed = errors.New("session closed")
+	ErrBootTimeout   = errors.New("vm boot timed out waiting for guest-agent handshake")
 )
 
 func cleanup(vmDir, tap string, alloc *netalloc.Allocator, ip netip.Addr) {

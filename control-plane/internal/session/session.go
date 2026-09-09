@@ -67,6 +67,7 @@ type Session struct {
 	readyOnce sync.Once
 	mgr       *Manager
 	done      chan struct{}
+	doneOnce  sync.Once
 
 	// guestConn is the currently-attached vsock connection to the guest-agent,
 	// if any. Use SendToGuest to write to it safely.
@@ -167,11 +168,15 @@ func NewInMemorySession(id string) *Session {
 // Done returns a channel closed when the Session is destroyed.
 func (s *Session) Done() <-chan struct{} { return s.done }
 
-// CloseDone closes the done channel. Idempotent.
+// CloseDone closes the done channel. Idempotent and safe to call from
+// several goroutines at once: Manager.Destroy, Host.Destroy and the reaper
+// goroutine that watches the Firecracker process can all race to close it.
+// A sync.Once (rather than a select on the channel) is what makes the
+// concurrent case safe; the select form still double-closes when two callers
+// pass the default branch before either closes.
 func (s *Session) CloseDone() {
-	select {
-	case <-s.done:
-	default:
-		close(s.done)
+	if s.done == nil {
+		return
 	}
+	s.doneOnce.Do(func() { close(s.done) })
 }
