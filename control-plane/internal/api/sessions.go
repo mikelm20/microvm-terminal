@@ -12,9 +12,9 @@ import (
 	"github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
-	"github.com/mikelm20/learn-platform/control-plane/internal/db"
-	"github.com/mikelm20/learn-platform/control-plane/internal/session"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/auth"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/db"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/session"
 )
 
 // PTY WebSocket keepalive. Browsers cannot send pings themselves, and NAT

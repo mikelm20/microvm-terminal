@@ -1,4 +1,4 @@
-module github.com/mikelm20/learn-platform/control-plane
+module github.com/mikelm20/microvm-terminal/control-plane
 
 go 1.25.0
 

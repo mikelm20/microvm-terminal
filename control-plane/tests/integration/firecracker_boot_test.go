@@ -36,8 +36,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mikelm20/learn-platform/control-plane/internal/config"
-	"github.com/mikelm20/learn-platform/control-plane/internal/session"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/config"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/session"
 )
 
 // TestFirecrackerBootAndHandshake boots one real Firecracker VM through the

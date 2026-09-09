@@ -32,7 +32,7 @@ jobs:
 
       - name: guest-agent
         working-directory: guest-agent
-        run: GOOS=linux GOARCH=amd64 go build ./... && GOOS=linux GOARCH=amd64 go vet ./...
+        run: make build && GOOS=linux GOARCH=amd64 go vet ./... && go test ./...
 
       - name: proxy
         working-directory: proxy

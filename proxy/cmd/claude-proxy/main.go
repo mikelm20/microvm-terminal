@@ -21,10 +21,10 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/mikelm20/learn-platform/proxy/internal/audit"
-	"github.com/mikelm20/learn-platform/proxy/internal/keys"
-	"github.com/mikelm20/learn-platform/proxy/internal/quota"
-	"github.com/mikelm20/learn-platform/proxy/internal/server"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/audit"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/keys"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/quota"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/server"
 )
 
 func main() {

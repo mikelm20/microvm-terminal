@@ -1,4 +1,4 @@
-module github.com/mikelm20/learn-platform/proxy
+module github.com/mikelm20/microvm-terminal/proxy
 
 go 1.25
 

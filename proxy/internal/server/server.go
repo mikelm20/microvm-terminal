@@ -20,9 +20,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mikelm20/learn-platform/proxy/internal/audit"
-	"github.com/mikelm20/learn-platform/proxy/internal/keys"
-	"github.com/mikelm20/learn-platform/proxy/internal/quota"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/audit"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/keys"
+	"github.com/mikelm20/microvm-terminal/proxy/internal/quota"
 )
 
 // Upstream defaults to Anthropic; overridden in tests.

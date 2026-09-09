@@ -21,7 +21,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/auth"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

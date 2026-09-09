@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/mikelm20/learn-platform/control-plane/internal/db"
-	"github.com/mikelm20/learn-platform/control-plane/internal/session"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/db"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/session"
 )
 
 // SessionHost abstracts the thing that creates, fetches, and destroys

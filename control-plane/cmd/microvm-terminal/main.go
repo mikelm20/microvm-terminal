@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mikelm20/learn-platform/control-plane/internal/api"
-	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
-	"github.com/mikelm20/learn-platform/control-plane/internal/config"
-	"github.com/mikelm20/learn-platform/control-plane/internal/db"
-	"github.com/mikelm20/learn-platform/control-plane/internal/session"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/api"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/auth"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/config"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/db"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/session"
 )
 
 // Version is stamped at build time via -ldflags.

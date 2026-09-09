@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mikelm20/learn-platform/control-plane/internal/firecracker"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/firecracker"
 )
 
 // JailedSpec describes one VM plus the constraints imposed on it.

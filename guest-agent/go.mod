@@ -1,4 +1,4 @@
-module github.com/mikelm20/learn-platform/guest-agent
+module github.com/mikelm20/microvm-terminal/guest-agent
 
 go 1.25
 

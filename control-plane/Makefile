@@ -2,7 +2,7 @@
 # terminal WebSocket.
 
 BINARY ?= microvm-terminal
-CMD ?= learn-control-plane
+CMD ?= microvm-terminal
 OUT_DIR ?= ./bin
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -ldflags="-s -w -X main.Version=$(VERSION)"

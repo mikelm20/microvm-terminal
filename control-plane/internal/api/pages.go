@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
-	"github.com/mikelm20/learn-platform/control-plane/internal/web"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/auth"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/web"
 )
 
 type pagesHandler struct {

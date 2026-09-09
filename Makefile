@@ -37,7 +37,7 @@ psql: .env.local
 .PHONY: build
 build:
 	cd control-plane && go build ./...
-	cd guest-agent && GOOS=linux GOARCH=amd64 go build ./...
+	$(MAKE) -C guest-agent build
 	cd proxy && go build ./...
 
 .PHONY: test
@@ -54,7 +54,7 @@ run-mock: .env.local
 	  mkdir -p .dev && test -s .dev/password || echo dev-password-1 > .dev/password; \
 	  cd control-plane && USE_MOCK_LAUNCHER=true SECURE_COOKIES=false \
 	    PASSWORD_FILE=../.dev/password COOKIE_SECRET_FILE=../.dev/cookie-secret \
-	    go run ./cmd/learn-control-plane -config /dev/null
+	    go run ./cmd/microvm-terminal -config /dev/null
 
 # Real Firecracker VM end-to-end boot test. Linux + /dev/kvm + root required.
 # See docs/firecracker-boot.md for the IT_* env vars.

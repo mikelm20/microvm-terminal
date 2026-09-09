@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mikelm20/learn-platform/control-plane/internal/config"
-	"github.com/mikelm20/learn-platform/control-plane/internal/firecracker"
-	"github.com/mikelm20/learn-platform/control-plane/internal/netalloc"
-	"github.com/mikelm20/learn-platform/control-plane/internal/vm"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/config"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/firecracker"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/netalloc"
+	"github.com/mikelm20/microvm-terminal/control-plane/internal/vm"
 )
 
 // Kernel command line parameters consumed by the guest agent.
