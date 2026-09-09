@@ -1,5 +1,0 @@
-{"wire":"streamjson","line":{"type":"user","message":{"role":"user","content":[{"type":"text","text":"say hi in one sentence"}]}}}
-{"wire":"streamjson","line":{"type":"system","subtype":"init","session_id":"hello-claude-04","cwd":"/home/learner","tools":["Read","Write","Edit","Bash","Glob","Grep","Task","SlashCommand"],"model":"claude-opus-4-7[1m]"}}
-{"wire":"streamjson","line":{"type":"rate_limit_event","rate_limit_info":{"status":"allowed","resetsAt":1776794400},"session_id":"hello-claude-04"}}
-{"wire":"streamjson","line":{"type":"assistant","message":{"id":"msg_hello_04","role":"assistant","model":"claude-opus-4-7","content":[{"type":"text","text":"Hi!"}]},"session_id":"hello-claude-04"}}
-{"wire":"streamjson","line":{"type":"result","subtype":"success","session_id":"hello-claude-04","duration_ms":1789,"result":"Hi!","num_turns":1,"is_error":false}}
