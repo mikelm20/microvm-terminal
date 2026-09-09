@@ -7,11 +7,14 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"time"
 )
 
-// A GuestEvent is what the in-VM guest-agent sends over vsock. The control
-// plane re-broadcasts these to wizard WebSocket subscribers.
+// GuestEvent is the frame shape the in-VM guest agent sends over vsock. The
+// first frame must be a hello carrying the session token from the kernel
+// command line; after that the agent only speaks when it has something to
+// report (today: nothing, the channel is host-to-guest for resize).
 type GuestEvent struct {
 	Type         string         `json:"type"`
 	TS           string         `json:"ts"`
@@ -19,19 +22,13 @@ type GuestEvent struct {
 	Payload      map[string]any `json:"payload,omitempty"`
 }
 
-// startVsockListener accepts exactly one connection on the per-VM vsock UDS,
-// verifies the guest's handshake (session_token must match), and forwards
-// subsequent events to s.Events. The first message MUST be type="hello" with
-// the correct session_token; otherwise the connection is closed.
-//
-// This is intentionally simple for MVP: one connection at a time. Guest-agent
-// reconnects on drop.
+// startVsockListener accepts connections on the per-VM vsock UDS, verifies
+// the guest's handshake (session_token must match), marks the session ready
+// and keeps the connection so the control plane can push resize frames.
 func (m *Manager) startVsockListener(s *Session, udsPath string) {
 	// Firecracker creates `<udsPath>_<port>` on the host when the guest dials
 	// vsock port <port>. We bind a Unix listener there and accept.
-	port := uint32(5555)
-	addr := udsPathForPort(udsPath, port)
-	// Remove stale socket from prior runs
+	addr := udsPath + "_" + strconv.Itoa(guestVsockPort)
 	_ = os.Remove(addr)
 
 	ln, err := net.Listen("unix", addr)
@@ -39,26 +36,23 @@ func (m *Manager) startVsockListener(s *Session, udsPath string) {
 		m.logger.Error("vsock listen", "addr", addr, "err", err)
 		return
 	}
-	// The uds file must be accessible to the firecracker process (running as root here).
+	// The uds file must be accessible to the firecracker process.
 	_ = os.Chmod(addr, 0o660)
-	m.logger.Info("vm boot: vsock listener up",
-		"session", s.ID, "addr", addr)
-	s.Events.Publish(GuestEvent{Type: "vm_booting", TS: nowRFC3339(), Payload: map[string]any{"stage": "guest_agent"}})
+	m.logger.Info("vm boot: vsock listener up", "session", s.ID, "addr", addr)
 
 	go func() {
 		defer ln.Close()
 		defer os.Remove(addr)
 		for {
-			// Stop the loop when the session is destroyed.
 			select {
 			case <-s.done:
 				return
 			default:
 			}
-			// Use a short deadline so Accept wakes up and can notice session
+			// Short deadline so Accept wakes up and can notice session
 			// shutdown, without a goroutine leak.
-			if tcp, ok := ln.(*net.UnixListener); ok {
-				_ = tcp.SetDeadline(time.Now().Add(2 * time.Second))
+			if ul, ok := ln.(*net.UnixListener); ok {
+				_ = ul.SetDeadline(time.Now().Add(2 * time.Second))
 			}
 			conn, err := ln.Accept()
 			if err != nil {
@@ -78,7 +72,7 @@ func (m *Manager) startVsockListener(s *Session, udsPath string) {
 
 func (m *Manager) handleGuestConn(s *Session, conn net.Conn) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(10 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(10 * time.Second))
 	dec := json.NewDecoder(bufio.NewReader(conn))
 
 	var hello GuestEvent
@@ -95,15 +89,18 @@ func (m *Manager) handleGuestConn(s *Session, conn net.Conn) {
 		"boot_elapsed_ms", time.Since(s.CreatedAt()).Milliseconds())
 	s.SetGuestConn(conn)
 	defer s.SetGuestConn(nil)
-
-	// Session is now fully ready: publish, signal waiters, timestamp the db.
-	s.Events.Publish(GuestEvent{Type: "agent_online", TS: nowRFC3339(), Payload: map[string]any{"hostname": hello.Payload["hostname"]}})
-	s.Events.Publish(GuestEvent{Type: "vm_ready", TS: nowRFC3339()})
 	s.MarkReady()
-	m.logger.Info("session ready", "session", s.ID,
-		"boot_ms", time.Since(s.CreatedAt()).Milliseconds())
+	m.logger.Info("session ready", "session", s.ID, "boot_ms", time.Since(s.CreatedAt()).Milliseconds())
 
-	// Clear deadline and relay events
+	// A browser may have connected during boot and sent its geometry before
+	// the guest was there to receive it. Replay it now so the tty is sized
+	// before the login shell starts anything interactive.
+	if cols, rows := s.WindowSize(); cols > 0 && rows > 0 {
+		if err := s.SendToGuest(resizeMessage(cols, rows)); err != nil {
+			m.logger.Warn("resize replay", "err", err, "session", s.ID)
+		}
+	}
+
 	_ = conn.SetDeadline(time.Time{})
 	for {
 		var ev GuestEvent
@@ -113,34 +110,8 @@ func (m *Manager) handleGuestConn(s *Session, conn net.Conn) {
 			} else {
 				m.logger.Warn("guest event decode", "err", err, "session", s.ID)
 			}
-			s.Events.Publish(GuestEvent{Type: "agent_offline", TS: nowRFC3339()})
 			return
 		}
-		// Strip the session token from events before broadcasting
-		ev.SessionToken = ""
-		s.Events.Publish(ev)
+		m.logger.Debug("guest event", "session", s.ID, "type", ev.Type)
 	}
 }
-
-// udsPathForPort appends `_<port>` to the Firecracker vsock socket path; this
-// is the convention Firecracker uses to expose a specific guest port to the host.
-func udsPathForPort(base string, port uint32) string {
-	return base + "_" + u32ToString(port)
-}
-
-func u32ToString(n uint32) string {
-	// Avoid strconv import clutter; 5555 is short anyway.
-	if n == 0 {
-		return "0"
-	}
-	var buf [10]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(buf[i:])
-}
-
-func nowRFC3339() string { return time.Now().UTC().Format(time.RFC3339Nano) }

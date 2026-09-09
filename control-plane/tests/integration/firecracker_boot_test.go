@@ -5,7 +5,7 @@
 // Gated behind `-tags=integration_firecracker` because it needs:
 //
 //   - Linux host with /dev/kvm accessible to the running user
-//   - Firecracker + jailer binaries on PATH or at the configured paths
+//   - Firecracker + jailer binaries at the configured paths
 //   - A prebuilt vmlinux + rootfs.ext4 (see vm-image/ for the build scripts)
 //   - CAP_NET_ADMIN and root-ish privileges to create tap devices and mount
 //     the per-VM rootfs copy
@@ -14,17 +14,17 @@
 //
 // Environment knobs:
 //
-//	LEARN_IT_KERNEL       absolute path to the vmlinux file                    (required)
-//	LEARN_IT_ROOTFS       absolute path to the golden rootfs.ext4              (required)
-//	LEARN_IT_TOKEN_FILE   absolute path to the claude OAuth token file         (required)
-//	LEARN_IT_FC_BIN       firecracker binary                                   (default /usr/local/bin/firecracker)
-//	LEARN_IT_JAILER       jailer wrapper script                                (default /usr/local/libexec/learn-platform/jailer.sh)
-//	LEARN_IT_VM_DATA_DIR  per-VM scratch root                                  (default /var/lib/firecracker/vms)
-//	LEARN_IT_CHROOT_BASE  jailer chroot base                                   (default /srv/jailer)
-//	LEARN_IT_USE_JAILER   "0" disables the jailer path (bring-up only)         (default "1")
-//	LEARN_IT_BRIDGE       host bridge name                                     (default fc-br0)
-//	LEARN_IT_CIDR         bridge CIDR                                          (default 172.20.0.0/24)
-//	LEARN_IT_BOOT_TIMEOUT seconds to wait for guest-agent handshake            (default 90)
+//	IT_KERNEL       absolute path to the vmlinux file                    (required)
+//	IT_ROOTFS       absolute path to the golden rootfs.ext4              (required)
+//	IT_TOKEN_FILE   absolute path to the claude OAuth token file         (required)
+//	IT_FC_BIN       firecracker binary                                   (default /usr/local/bin/firecracker)
+//	IT_JAILER       jailer wrapper script                                (default /usr/local/libexec/microvm-terminal/jailer.sh)
+//	IT_VM_DATA_DIR  per-VM scratch root                                  (default /var/lib/firecracker/vms)
+//	IT_CHROOT_BASE  jailer chroot base                                   (default /srv/jailer)
+//	IT_USE_JAILER   "0" disables the jailer path (bring-up only)         (default "1")
+//	IT_BRIDGE       host bridge name                                     (default fc-br0)
+//	IT_CIDR         bridge CIDR                                          (default 172.20.0.0/24)
+//	IT_BOOT_TIMEOUT seconds to wait for guest-agent handshake            (default 90)
 package integration
 
 import (
@@ -41,13 +41,11 @@ import (
 )
 
 // TestFirecrackerBootAndHandshake boots one real Firecracker VM through the
-// same code path the control plane uses for learners, waits for the
-// guest-agent vsock handshake to complete, asserts session_ready fires, and
-// tears the VM down. Failure modes it catches:
+// same code path the daemon uses, waits for the guest-agent vsock handshake,
+// pushes a resize frame, and tears the VM down. Failure modes it catches:
 //
-//   - Mock launcher silently selected on a host that should boot real VMs.
 //   - Jailer misconfiguration (chroot, cgroups, seccomp) stopping the kernel.
-//   - Guest-agent not being baked into the rootfs or not dialling vsock.
+//   - Guest-agent not baked into the rootfs or not dialling vsock.
 //   - session_token mismatch between kernel cmdline and hello frame.
 //   - Ready signal (MarkReady / WaitReady) not being wired.
 func TestFirecrackerBootAndHandshake(t *testing.T) {
@@ -62,24 +60,19 @@ func TestFirecrackerBootAndHandshake(t *testing.T) {
 		return v
 	}
 
-	cfg := config.Config{
-		MaxConcurrent:        1,
-		FirecrackerBin:       envOr("LEARN_IT_FC_BIN", "/usr/local/bin/firecracker"),
-		JailerBin:            envOr("LEARN_IT_JAILER_BIN", "/usr/local/bin/jailer"),
-		KernelPath:           requireEnv("LEARN_IT_KERNEL"),
-		RootfsPath:           requireEnv("LEARN_IT_ROOTFS"),
-		VmDataDir:            envOr("LEARN_IT_VM_DATA_DIR", "/var/lib/firecracker/vms"),
-		BridgeName:           envOr("LEARN_IT_BRIDGE", "fc-br0"),
-		VmCIDRBase:           envOr("LEARN_IT_CIDR", "172.20.0.0/24"),
-		ClaudeOAuthTokenFile: requireEnv("LEARN_IT_TOKEN_FILE"),
-		UseJailer:            envBool("LEARN_IT_USE_JAILER", true),
-		JailerScript:         envOr("LEARN_IT_JAILER", "/usr/local/libexec/learn-platform/jailer.sh"),
-		JailerChrootBase:     envOr("LEARN_IT_CHROOT_BASE", "/srv/jailer"),
-		JailerCPUQuotaMicros: 100_000,
-		JailerMemBytes:       1 << 30,
-		BootTimeoutSeconds:   envInt("LEARN_IT_BOOT_TIMEOUT", 90),
-		UseMockLauncher:      false,
-	}
+	cfg := config.Defaults()
+	cfg.MaxConcurrent = 1
+	cfg.FirecrackerBin = envOr("IT_FC_BIN", cfg.FirecrackerBin)
+	cfg.KernelPath = requireEnv("IT_KERNEL")
+	cfg.RootfsPath = requireEnv("IT_ROOTFS")
+	cfg.VMDataDir = envOr("IT_VM_DATA_DIR", cfg.VMDataDir)
+	cfg.BridgeName = envOr("IT_BRIDGE", cfg.BridgeName)
+	cfg.VMCIDR = envOr("IT_CIDR", cfg.VMCIDR)
+	cfg.ClaudeOAuthTokenFile = requireEnv("IT_TOKEN_FILE")
+	cfg.Jailer.Enabled = envBool("IT_USE_JAILER", true)
+	cfg.Jailer.Script = envOr("IT_JAILER", cfg.Jailer.Script)
+	cfg.Jailer.ChrootBase = envOr("IT_CHROOT_BASE", cfg.Jailer.ChrootBase)
+	cfg.BootTimeoutSeconds = envInt("IT_BOOT_TIMEOUT", 90)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	mgr, err := session.NewManager(cfg, logger)
@@ -97,11 +90,11 @@ func TestFirecrackerBootAndHandshake(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = mgr.Destroy(s.ID) })
 
-	// Assert the session-token handshake: the token is set in the kernel
-	// cmdline and the guest-agent echoes it back on vsock hello. A
-	// mismatch causes the listener to reject the hello, so WaitReady
-	// would time out. WaitReady returning nil therefore proves the
-	// handshake used a matching token.
+	// A geometry sent before the guest is up must be replayed on handshake.
+	if err := s.Resize(120, 40); err != nil {
+		t.Fatalf("Resize before ready: %v", err)
+	}
+
 	bootTimeout := time.Duration(cfg.BootTimeoutSeconds) * time.Second
 	waitCtx, waitCancel := context.WithTimeout(ctx, bootTimeout)
 	defer waitCancel()
@@ -115,7 +108,6 @@ func TestFirecrackerBootAndHandshake(t *testing.T) {
 	}
 	bootElapsed := readyAt.Sub(s.CreatedAt())
 	t.Logf("session %s ready after %s (token prefix %s...)", s.ID, bootElapsed, safePrefix(s.SessionToken))
-
 	if bootElapsed <= 0 {
 		t.Fatalf("non-positive boot elapsed: %s", bootElapsed)
 	}
@@ -123,24 +115,9 @@ func TestFirecrackerBootAndHandshake(t *testing.T) {
 		t.Fatal("session token is empty; cmdline never carried it")
 	}
 
-	// vm_ready / agent_online must have been published.
-	snap, _, unsub := s.Events.Subscribe(16)
-	defer unsub()
-	gotReady := false
-	gotAgent := false
-	for _, e := range snap {
-		switch e.Type {
-		case "vm_ready":
-			gotReady = true
-		case "agent_online":
-			gotAgent = true
-		}
-	}
-	if !gotReady {
-		t.Error("missing vm_ready event in history")
-	}
-	if !gotAgent {
-		t.Error("missing agent_online event in history")
+	// With the guest attached, a resize must reach it without error.
+	if err := s.Resize(100, 30); err != nil {
+		t.Fatalf("Resize after ready: %v", err)
 	}
 
 	if err := mgr.Destroy(s.ID); err != nil {

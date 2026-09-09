@@ -1,16 +1,15 @@
-// learn-control-plane serves the full CONTRACTS.md API surface:
-//   - identity + magic-link auth + Postgres-backed accounts
-//   - lesson catalog from lessons/*.yml
-//   - progress sync
-//   - session lifecycle (cold + warm pool) + wizard WS + transcript
-//   - public read-only proof + certificate endpoints
-//   - /healthz + /metrics
+// The control plane boots one Firecracker microVM per session and bridges its
+// serial console to a browser terminal.
+//
+//   - password login with a signed cookie
+//   - POST /sessions boots a VM (jailer, cgroups, seccomp, nftables egress)
+//   - GET /sessions/{id}/pty is the WebSocket to the VM serial console
+//   - idle VMs are reaped, capacity is capped, state lands in Postgres
+//   - /healthz and /metrics
 package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -21,12 +20,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mikelm20/learn-platform/control-plane/internal/api"
 	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
 	"github.com/mikelm20/learn-platform/control-plane/internal/config"
 	"github.com/mikelm20/learn-platform/control-plane/internal/db"
-	"github.com/mikelm20/learn-platform/control-plane/internal/identity"
-	"github.com/mikelm20/learn-platform/control-plane/internal/mail"
 	"github.com/mikelm20/learn-platform/control-plane/internal/session"
 )
 
@@ -35,7 +33,7 @@ var Version = "dev"
 
 func main() {
 	var configPath string
-	flag.StringVar(&configPath, "config", "/etc/learn-platform/config.toml", "path to config file")
+	flag.StringVar(&configPath, "config", "/etc/microvm-terminal/config.yaml", "path to config file")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -53,7 +51,7 @@ func main() {
 
 	store, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("open db", "err", err, "url", cfg.DatabaseURL)
+		logger.Error("open db", "err", err)
 		os.Exit(1)
 	}
 	defer store.Close()
@@ -63,23 +61,13 @@ func main() {
 	}
 	logger.Info("db ready")
 
-	secret, err := loadOrMintSecret(cfg.IdentityCookieSecret, logger)
+	gate, err := auth.NewGate(cfg.PasswordFile, cfg.CookieSecretFile, auth.Options{
+		Secure: cfg.SecureCookies,
+		Domain: cfg.CookieDomain,
+	})
 	if err != nil {
-		logger.Error("cookie secret", "err", err)
+		logger.Error("login gate", "err", err, "hint", "write the shared password to password_file (8+ characters)")
 		os.Exit(1)
-	}
-	signer := identity.NewSigner(secret)
-
-	var sender mail.Sender
-	if cfg.ResendAPIKey != "" && cfg.ResendFromAddress != "" {
-		sender = mail.NewResendSender(cfg.ResendAPIKey, cfg.ResendFromAddress, logger)
-		logger.Info("mail via resend", "from", cfg.ResendFromAddress)
-	} else {
-		sender = mail.NewStdoutSender(logger)
-		logger.Info("mail via stdout (no RESEND_API_KEY)")
-	}
-	if cfg.VoiceDir != "" {
-		mail.SetVoiceDir(cfg.VoiceDir)
 	}
 
 	launcher, err := pickLauncher(cfg, logger)
@@ -93,31 +81,27 @@ func main() {
 		pool.Start()
 		defer pool.Stop()
 	}
-	h := session.NewHost(launcher, pool, cfg.MaxConcurrent, logger)
-
-	transcript := session.NewTranscript(store, logger)
-
-	var legacyGate *auth.Gate
-	if _, err := os.Stat(cfg.AuthPasswordFile); err == nil {
-		if g, err := auth.NewGate(cfg.AuthPasswordFile, cfg.AuthCookieSecretFile, cfg.CookieDomain); err == nil {
-			legacyGate = g
+	host := session.NewHost(launcher, pool, cfg.MaxConcurrent, logger)
+	host.OnGone(func(s *session.Session) {
+		id, err := uuid.Parse(s.ID)
+		if err != nil {
+			return
 		}
-	}
+		dbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := store.MarkSessionReaped(dbCtx, id); err != nil {
+			logger.Warn("mark session reaped", "id", s.ID, "err", err)
+		}
+	})
+	go host.RunIdleReaper(ctx, time.Duration(cfg.IdleTimeoutSeconds)*time.Second, 15*time.Second)
+	api.RegisterMetrics(host)
 
 	handler := api.NewRouter(api.Deps{
-		Logger:        logger,
-		Store:         store,
-		Signer:        signer,
-		Host:          h,
-		Transcript:    transcript,
-		Mail:          sender,
-		MagicLimiter:  auth.MagicLinkLimiter(),
-		IPLimiter:     auth.NewTokenBucket(20, 5*time.Minute),
-		LessonsDir:    cfg.LessonsDir,
-		PublicOrigin:  cfg.PublicOrigin,
-		SecureCookies: cfg.SecureCookies,
-		CookieDomain:  cfg.CookieDomain,
-		LegacyGate:    legacyGate,
+		Logger:       logger,
+		Store:        store,
+		Gate:         gate,
+		Host:         host,
+		PublicOrigin: cfg.PublicOrigin,
 	})
 
 	srv := &http.Server{
@@ -127,7 +111,8 @@ func main() {
 	}
 	errCh := make(chan error, 1)
 	go func() {
-		logger.Info("listening", "addr", cfg.ListenAddr)
+		logger.Info("listening", "addr", cfg.ListenAddr, "max_concurrent", cfg.MaxConcurrent,
+			"idle_timeout_s", cfg.IdleTimeoutSeconds, "vcpu", cfg.VM.Vcpu, "mem_mib", cfg.VM.MemMiB)
 		errCh <- srv.ListenAndServe()
 	}()
 
@@ -146,24 +131,25 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Warn("http shutdown", "err", err)
 	}
+	// Tear down every VM so no Firecracker process outlives the daemon.
+	for _, s := range host.List() {
+		_ = host.Destroy(s.ID)
+	}
 	fmt.Fprintln(os.Stderr, "bye")
 }
 
 // pickLauncher returns the VM launcher the daemon should use.
 //
 // Default is the real Firecracker-backed launcher (via session.NewManager).
-// The mock launcher is only selected when cfg.UseMockLauncher is true (opt-in
-// via the use_mock_launcher config key or the USE_MOCK_LAUNCHER env var) or
-// the process is built with `-tags mock_launcher`. It is useful for unit
-// tests, the curl suite (`tests/api.sh`), and macOS development where KVM is
-// not available.
+// The mock launcher is only selected when cfg.UseMockLauncher is true. It
+// serves in-memory sessions with no console and exists for the API tests and
+// for development on machines without KVM.
 //
 // A failure to initialise the real manager when mock is NOT requested is
-// fatal: falling back silently used to produce the confusing "using mock
-// launcher" log on `learn-01` even though the host was fully provisioned.
+// fatal: silently falling back to the mock used to hide a broken host.
 func pickLauncher(cfg config.Config, logger *slog.Logger) (session.Launcher, error) {
 	if cfg.UseMockLauncher {
-		logger.Info("launcher: mock (opt-in via config)")
+		logger.Warn("launcher: mock (opt-in via config); sessions have no console")
 		return session.LauncherFunc(func(ctx context.Context) (*session.Session, error) {
 			return session.NewInMemorySession(""), nil
 		}), nil
@@ -171,25 +157,22 @@ func pickLauncher(cfg config.Config, logger *slog.Logger) (session.Launcher, err
 	logger.Info("launcher: real firecracker",
 		"kernel", cfg.KernelPath,
 		"rootfs", cfg.RootfsPath,
-		"jailer", cfg.UseJailer,
-		"chroot_base", cfg.JailerChrootBase,
-		"vcpu_quota_us", cfg.JailerCPUQuotaMicros,
-		"mem_bytes", cfg.JailerMemBytes,
+		"jailer", cfg.Jailer.Enabled,
+		"chroot_base", cfg.Jailer.ChrootBase,
+		"cpu_quota_us", cfg.JailerCPUQuotaMicros(),
+		"mem_bytes", cfg.JailerMemBytes(),
 	)
 	mgr, err := session.NewManager(cfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("init firecracker manager: %w (set USE_MOCK_LAUNCHER=true to run without a hypervisor)", err)
+		return nil, fmt.Errorf("init firecracker manager: %w (set use_mock_launcher: true to run without a hypervisor)", err)
 	}
 	boot := time.Duration(cfg.BootTimeoutSeconds) * time.Second
-	if boot <= 0 {
-		boot = 90 * time.Second
-	}
 	return &managerLauncher{mgr: mgr, boot: boot, logger: logger}, nil
 }
 
-// managerLauncher adapts *session.Manager to both Launcher and OptionsLauncher.
-// Plain Launch preserves the F2 path (warm pool + legacy Create); LaunchWith
-// forwards CreateOptions so Capstone handlers can pass RootfsOverrides.
+// managerLauncher adapts *session.Manager to Launcher and waits for the
+// guest-agent handshake before handing the session out, so a client that
+// gets a session id can attach to a console that is already alive.
 type managerLauncher struct {
 	mgr    *session.Manager
 	boot   time.Duration
@@ -197,11 +180,7 @@ type managerLauncher struct {
 }
 
 func (a *managerLauncher) Launch(ctx context.Context) (*session.Session, error) {
-	return a.LaunchWith(ctx, session.CreateOptions{})
-}
-
-func (a *managerLauncher) LaunchWith(ctx context.Context, opts session.CreateOptions) (*session.Session, error) {
-	s, err := a.mgr.CreateWith(ctx, opts)
+	s, err := a.mgr.Create(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -214,23 +193,4 @@ func (a *managerLauncher) LaunchWith(ctx context.Context, opts session.CreateOpt
 		return nil, session.ErrBootTimeout
 	}
 	return s, nil
-}
-
-func loadOrMintSecret(hex32 string, logger *slog.Logger) ([]byte, error) {
-	if hex32 != "" {
-		b, err := hex.DecodeString(hex32)
-		if err != nil {
-			return nil, fmt.Errorf("decode secret: %w", err)
-		}
-		if len(b) < 32 {
-			return nil, fmt.Errorf("secret too short: %d bytes", len(b))
-		}
-		return b, nil
-	}
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return nil, err
-	}
-	logger.Warn("IDENTITY_COOKIE_SECRET not set; generated ephemeral secret (restart invalidates identity cookies)")
-	return b, nil
 }

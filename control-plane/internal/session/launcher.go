@@ -2,21 +2,11 @@ package session
 
 import "context"
 
-// Launcher is the abstraction the session Manager uses to boot a VM. Production
-// code uses the Firecracker-backed implementation (manager.go Create path);
-// tests use a mock that returns an empty VM handle instantly or after a delay.
-//
-// Splitting this out lets the warm-pool + HTTP layer be exercised without a
-// real hypervisor.
+// Launcher is the abstraction the Host uses to boot a VM. Production code
+// uses the Firecracker-backed Manager through an adapter in main; tests use a
+// mock that returns an in-memory Session instantly or after a delay.
 type Launcher interface {
 	Launch(ctx context.Context) (*Session, error)
-}
-
-// OptionsLauncher is the optional richer surface the Host probes for when
-// CreateOptions are provided. Production Manager implements it via a thin
-// adapter; mock launchers can safely ignore it and fall back to plain Launch.
-type OptionsLauncher interface {
-	LaunchWith(ctx context.Context, opts CreateOptions) (*Session, error)
 }
 
 // LauncherFunc adapts a function into a Launcher.

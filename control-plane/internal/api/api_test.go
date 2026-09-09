@@ -3,15 +3,17 @@ package api_test
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,84 +22,142 @@ import (
 	"github.com/mikelm20/learn-platform/control-plane/internal/api"
 	"github.com/mikelm20/learn-platform/control-plane/internal/auth"
 	"github.com/mikelm20/learn-platform/control-plane/internal/db"
-	"github.com/mikelm20/learn-platform/control-plane/internal/identity"
-	"github.com/mikelm20/learn-platform/control-plane/internal/mail"
 	"github.com/mikelm20/learn-platform/control-plane/internal/session"
 )
 
-// These tests require a live Postgres at $DATABASE_URL.
-// Skip with -short or when the DB is not reachable.
-func testStore(t *testing.T) *db.Store {
-	t.Helper()
-	if testing.Short() {
-		t.Skip("short mode")
+const testPassword = "open-sesame-8"
+
+// memStore is an in-memory SessionStore so the handler tests need no
+// Postgres. TestWithPostgres exercises the real one when DATABASE_URL points
+// at a database.
+type memStore struct {
+	mu   sync.Mutex
+	rows map[uuid.UUID]*db.Session
+}
+
+func newMemStore() *memStore { return &memStore{rows: map[uuid.UUID]*db.Session{}} }
+
+func (m *memStore) InsertSession(_ context.Context, s db.Session) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s.CreatedAt = time.Now()
+	m.rows[s.ID] = &s
+	return nil
+}
+
+func (m *memStore) GetSession(_ context.Context, id uuid.UUID) (*db.Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r, ok := m.rows[id]; ok {
+		cp := *r
+		return &cp, nil
 	}
-	url := os.Getenv("DATABASE_URL")
-	if url == "" {
-		url = "postgres://learn:learn@localhost:5432/learn?sslmode=disable"
+	return nil, db.ErrNotFound
+}
+
+func (m *memStore) MarkSessionReaped(_ context.Context, id uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r, ok := m.rows[id]; ok && !r.ReapedAt.Valid {
+		r.ReapedAt.Valid = true
+		r.ReapedAt.Time = time.Now()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	store, err := db.Open(ctx, url)
-	if err != nil {
-		t.Skipf("skip: no DB at %s: %v", url, err)
+	return nil
+}
+
+func (m *memStore) TouchSessionAttached(_ context.Context, id uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r, ok := m.rows[id]; ok {
+		r.LastAttachedAt.Valid = true
+		r.LastAttachedAt.Time = time.Now()
 	}
-	if err := store.Migrate(ctx); err != nil {
-		t.Fatalf("migrate: %v", err)
+	return nil
+}
+
+// fakeProc stands in for Firecracker: whatever the client writes lands in
+// stdinBuf; whatever the test writes to stdoutW shows up on the serial tee.
+type fakeProc struct {
+	stdinMu  sync.Mutex
+	stdinBuf bytes.Buffer
+	stdoutR  *io.PipeReader
+	stdoutW  *io.PipeWriter
+}
+
+func newFakeProc() *fakeProc {
+	r, w := io.Pipe()
+	return &fakeProc{stdoutR: r, stdoutW: w}
+}
+
+func (p *fakeProc) Write(b []byte) (int, error) {
+	p.stdinMu.Lock()
+	defer p.stdinMu.Unlock()
+	return p.stdinBuf.Write(b)
+}
+func (p *fakeProc) Stdin() io.Writer  { return p }
+func (p *fakeProc) Stdout() io.Reader { return p.stdoutR }
+func (p *fakeProc) Stop() error       { return p.stdoutW.Close() }
+func (p *fakeProc) Wait() error       { return nil }
+func (p *fakeProc) VmDir() string     { return "" }
+func (p *fakeProc) stdinString() string {
+	p.stdinMu.Lock()
+	defer p.stdinMu.Unlock()
+	return p.stdinBuf.String()
+}
+
+// consoleLauncher returns sessions backed by fakeProc so the PTY WebSocket
+// has something to bridge.
+type consoleLauncher struct {
+	mu    sync.Mutex
+	procs map[string]*fakeProc
+	sleep time.Duration
+}
+
+func (l *consoleLauncher) Launch(ctx context.Context) (*session.Session, error) {
+	if l.sleep > 0 {
+		select {
+		case <-time.After(l.sleep):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
-	tables := []string{
-		"prompt_idempotency", "session_events", "sessions",
-		"certificates", "progress", "auth_sessions", "magic_links", "identities",
+	s := session.NewInMemorySession(uuid.NewString())
+	p := newFakeProc()
+	s.Process = p
+	s.Serial = session.NewSerialTee(p.Stdout(), 64*1024)
+	l.mu.Lock()
+	if l.procs == nil {
+		l.procs = map[string]*fakeProc{}
 	}
-	for _, tbl := range tables {
-		_, _ = store.Pool.Exec(ctx, "delete from "+tbl)
-	}
-	return store
+	l.procs[s.ID] = p
+	l.mu.Unlock()
+	return s, nil
+}
+
+func (l *consoleLauncher) proc(id string) *fakeProc {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.procs[id]
 }
 
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
-// mockLauncher returns fake sessions. Sleep emulates cold-boot latency.
-type mockLauncher struct {
-	Sleep time.Duration
-}
-
-func (m *mockLauncher) Launch(ctx context.Context) (*session.Session, error) {
-	if m.Sleep > 0 {
-		select {
-		case <-time.After(m.Sleep):
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
-	return session.NewInMemorySession(uuid.NewString()), nil
-}
-
-func testServer(t *testing.T, store *db.Store, pool *session.WarmPool, launcher session.Launcher) *httptest.Server {
+func testServer(t *testing.T, store api.SessionStore, launcher session.Launcher, maxLive int) (*httptest.Server, *session.Host) {
 	t.Helper()
 	logger := slog.New(slog.NewTextHandler(discardWriter{}, &slog.HandlerOptions{Level: slog.LevelError}))
-	secret := make([]byte, 32)
-	_, _ = rand.Read(secret)
-	signer := identity.NewSigner(secret)
-
-	host := session.NewHost(launcher, pool, 5, logger)
+	gate := auth.NewGateFromSecrets(testPassword, bytes.Repeat([]byte{7}, 32), auth.Options{})
+	host := session.NewHost(launcher, nil, maxLive, logger)
 	srv := httptest.NewServer(api.NewRouter(api.Deps{
-		Logger:        logger,
-		Store:         store,
-		Signer:        signer,
-		Host:          host,
-		Transcript:    session.NewTranscript(store, logger),
-		Mail:          mail.NewStdoutSender(logger),
-		MagicLimiter:  auth.MagicLinkLimiter(),
-		IPLimiter:     auth.NewTokenBucket(100, time.Minute),
-		LessonsDir:    "../../../lessons",
-		PublicOrigin:  "http://localhost",
-		SecureCookies: false,
+		Logger:       logger,
+		Store:        store,
+		Gate:         gate,
+		Host:         host,
+		PublicOrigin: "http://localhost",
 	}))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, host
 }
 
 func newClient(t *testing.T) *http.Client {
@@ -106,7 +166,24 @@ func newClient(t *testing.T) *http.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &http.Client{Jar: jar, Timeout: 10 * time.Second}
+	return &http.Client{
+		Jar:     jar,
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+}
+
+func login(t *testing.T, c *http.Client, base, name, password string) *http.Response {
+	t.Helper()
+	form := url.Values{"name": {name}, "password": {password}}
+	resp, err := c.PostForm(base+"/login", form)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	return resp
 }
 
 func postJSON(t *testing.T, c *http.Client, url string, body any) *http.Response {
@@ -119,176 +196,249 @@ func postJSON(t *testing.T, c *http.Client, url string, body any) *http.Response
 	return resp
 }
 
-func readBody(r io.Reader) string {
-	b, _ := io.ReadAll(r)
-	return string(b)
-}
-
 func mustJSON(t *testing.T, resp *http.Response, into any) {
 	t.Helper()
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		t.Fatalf("status %d: %s", resp.StatusCode, readBody(resp.Body))
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status %d: %s", resp.StatusCode, b)
 	}
 	if err := json.NewDecoder(resp.Body).Decode(into); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 }
 
-// TestMintClaimSession covers the happy path documented in the task exit
-// criteria: mint -> PATCH me -> session -> prompt idempotency -> transcript.
-func TestMintClaimSession(t *testing.T) {
-	store := testStore(t)
-	defer store.Close()
-	srv := testServer(t, store, nil, &mockLauncher{})
+func TestLoginFlow(t *testing.T) {
+	srv, _ := testServer(t, newMemStore(), &consoleLauncher{}, 2)
+	c := newClient(t)
 
-	client := newClient(t)
-
-	resp := postJSON(t, client, srv.URL+"/identity", map[string]any{"lang": "es"})
-	var mint struct{ UUID string }
-	mustJSON(t, resp, &mint)
-	if mint.UUID == "" {
-		t.Fatal("no uuid")
-	}
-
-	resp, err := client.Get(srv.URL + "/me")
+	resp, err := c.Get(srv.URL + "/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var me map[string]any
-	mustJSON(t, resp, &me)
-	if me["uuid"] != mint.UUID {
-		t.Fatalf("me uuid drift: %v vs %s", me["uuid"], mint.UUID)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "<form") {
+		t.Fatalf("login page: %d", resp.StatusCode)
 	}
 
-	resp = postJSON(t, client, srv.URL+"/sessions", map[string]any{
-		"lesson_id": "hello-claude", "lang": "es",
-	})
-	var sess struct {
-		SessionID string `json:"session_id"`
+	if r := login(t, c, srv.URL, "Ada", "nope"); r.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("wrong password: %d", r.StatusCode)
 	}
-	mustJSON(t, resp, &sess)
-	if sess.SessionID == "" {
-		t.Fatal("no session_id")
+	if r := postJSON(t, c, srv.URL+"/sessions", map[string]any{}); r.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("sessions without cookie: %d", r.StatusCode)
 	}
-
-	key := uuid.NewString()
-	body := map[string]any{"text": "hola", "client_ts": time.Now().Format(time.RFC3339)}
-	b, _ := json.Marshal(body)
-	doPrompt := func() string {
-		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/sessions/"+sess.SessionID+"/prompt", bytes.NewReader(b))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Idempotency-Key", key)
-		r, err := client.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var pr struct {
-			TurnID string `json:"turn_id"`
-		}
-		mustJSON(t, r, &pr)
-		return pr.TurnID
+	if r := login(t, c, srv.URL, "!!!", testPassword); r.StatusCode != http.StatusBadRequest {
+		t.Fatalf("empty slug: %d", r.StatusCode)
 	}
-	first := doPrompt()
-	second := doPrompt()
-	if first != second {
-		t.Fatalf("idempotency broken: %s vs %s", first, second)
+	r := login(t, c, srv.URL, "Ada Lovelace", testPassword)
+	if r.StatusCode != http.StatusSeeOther || r.Header.Get("Location") != "/terminal" {
+		t.Fatalf("login: %d -> %q", r.StatusCode, r.Header.Get("Location"))
 	}
-
-	resp3, err := client.Get(srv.URL + "/sessions/" + sess.SessionID + "/transcript")
+	resp, err = c.Get(srv.URL + "/terminal")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var tr struct {
-		Events []json.RawMessage `json:"events"`
+	body, _ = io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), "ada-lovelace") {
+		t.Fatalf("terminal page: %d", resp.StatusCode)
 	}
-	mustJSON(t, resp3, &tr)
-	if len(tr.Events) < 1 {
-		t.Fatalf("expected transcript events, got %d", len(tr.Events))
+
+	// JSON login for API clients.
+	jr := postJSON(t, c, srv.URL+"/login", map[string]string{"name": "bot", "password": testPassword})
+	jr.Body.Close()
+	if jr.StatusCode != http.StatusNoContent {
+		t.Fatalf("json login: %d", jr.StatusCode)
 	}
 }
 
-// TestWarmPoolSub500ms verifies that POST /sessions?warm=true is served in
-// well under 500ms when the warm pool has capacity, even though the cold
-// path takes 5 seconds.
-func TestWarmPoolSub500ms(t *testing.T) {
-	store := testStore(t)
-	defer store.Close()
+func TestSessionLifecycle(t *testing.T) {
+	store := newMemStore()
+	srv, host := testServer(t, store, &consoleLauncher{}, 1)
+	ada := newClient(t)
+	login(t, ada, srv.URL, "ada", testPassword)
+	eve := newClient(t)
+	login(t, eve, srv.URL, "eve", testPassword)
 
-	launcher := &mockLauncher{Sleep: 5 * time.Second}
-	logger := slog.New(slog.NewTextHandler(discardWriter{}, &slog.HandlerOptions{Level: slog.LevelError}))
-	pool := session.NewWarmPool(launcher, 1, logger)
-	pool.Start()
-	defer pool.Stop()
-
-	// Wait up to 7s for the pool to fill.
-	deadline := time.Now().Add(7 * time.Second)
-	for pool.Size() < 1 && time.Now().Before(deadline) {
-		time.Sleep(100 * time.Millisecond)
-	}
-	if pool.Size() < 1 {
-		t.Skip("warm pool did not fill in time")
-	}
-
-	srv := testServer(t, store, pool, launcher)
-	client := newClient(t)
-	postJSON(t, client, srv.URL+"/identity", map[string]any{"lang": "es"}).Body.Close()
-
-	start := time.Now()
-	resp := postJSON(t, client, srv.URL+"/sessions", map[string]any{
-		"lesson_id": "hello-claude", "lang": "es", "warm": true,
-	})
-	elapsed := time.Since(start)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		t.Fatalf("warm session: %d: %s", resp.StatusCode, readBody(resp.Body))
-	}
-	if elapsed > 500*time.Millisecond {
-		t.Fatalf("warm session too slow: %v", elapsed)
-	}
-}
-
-// TestWSReplay verifies the /sessions/:id/ws endpoint replays every
-// persisted event for that session before accepting new ones.
-func TestWSReplay(t *testing.T) {
-	store := testStore(t)
-	defer store.Close()
-	srv := testServer(t, store, nil, &mockLauncher{})
-
-	client := newClient(t)
-	postJSON(t, client, srv.URL+"/identity", map[string]any{"lang": "es"}).Body.Close()
-
-	resp := postJSON(t, client, srv.URL+"/sessions", map[string]any{
-		"lesson_id": "hello-claude", "lang": "es",
-	})
-	var sess struct{ SessionID string `json:"session_id"` }
-	mustJSON(t, resp, &sess)
-
-	b, _ := json.Marshal(map[string]any{"text": "hi", "client_ts": time.Now().Format(time.RFC3339)})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/sessions/"+sess.SessionID+"/prompt", bytes.NewReader(b))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotency-Key", uuid.NewString())
-	r2, err := client.Do(req)
+	r := ada.Get
+	resp, err := r(srv.URL + "/sessions/current")
 	if err != nil {
 		t.Fatal(err)
 	}
-	r2.Body.Close()
-	time.Sleep(400 * time.Millisecond) // let transcript persist
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("current before boot: %d", resp.StatusCode)
+	}
 
-	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/sessions/" + sess.SessionID + "/ws"
+	var created api.CreateSessionResponse
+	mustJSON(t, postJSON(t, ada, srv.URL+"/sessions", map[string]any{}), &created)
+	if created.SessionID == "" || !strings.HasSuffix(created.PTYWSURL, "/sessions/"+created.SessionID+"/pty") {
+		t.Fatalf("create: %+v", created)
+	}
+
+	var cur api.SessionInfo
+	resp, _ = ada.Get(srv.URL + "/sessions/current")
+	mustJSON(t, resp, &cur)
+	if cur.SessionID != created.SessionID || !cur.Alive || cur.Owner != "ada" {
+		t.Fatalf("current: %+v", cur)
+	}
+
+	// Capacity is one: a second boot is refused with a retry hint.
+	resp = postJSON(t, eve, srv.URL+"/sessions", map[string]any{})
+	var apiErr api.APIError
+	json.NewDecoder(resp.Body).Decode(&apiErr)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable || apiErr.Code != api.ErrCapacityFull || apiErr.RetryAfterSeconds == nil {
+		t.Fatalf("capacity: %d %+v", resp.StatusCode, apiErr)
+	}
+
+	// Eve cannot see or delete Ada's VM.
+	resp, _ = eve.Get(srv.URL + "/sessions/" + created.SessionID)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("cross-owner describe: %d", resp.StatusCode)
+	}
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/sessions/"+created.SessionID, nil)
+	resp, _ = eve.Do(req)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("cross-owner delete: %d", resp.StatusCode)
+	}
+	if host.Count() != 1 {
+		t.Fatal("eve's delete removed ada's session")
+	}
+
+	// Ada deletes; the row is stamped reaped and Describe reports it dead.
+	req, _ = http.NewRequest(http.MethodDelete, srv.URL+"/sessions/"+created.SessionID, nil)
+	resp, _ = ada.Do(req)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || host.Count() != 0 {
+		t.Fatalf("delete: %d live=%d", resp.StatusCode, host.Count())
+	}
+	var gone api.SessionInfo
+	resp, _ = ada.Get(srv.URL + "/sessions/" + created.SessionID)
+	mustJSON(t, resp, &gone)
+	if gone.Alive {
+		t.Fatal("deleted session reported alive")
+	}
+}
+
+func TestPTYBridgeAndResize(t *testing.T) {
+	launcher := &consoleLauncher{}
+	srv, host := testServer(t, newMemStore(), launcher, 2)
+	c := newClient(t)
+	login(t, c, srv.URL, "ada", testPassword)
+
+	var created api.CreateSessionResponse
+	mustJSON(t, postJSON(t, c, srv.URL+"/sessions", map[string]any{}), &created)
+	proc := launcher.proc(created.SessionID)
+	live, _ := host.Get(created.SessionID)
+
+	// Bytes written by the "VM" before the client attaches are replayed.
+	proc.stdoutW.Write([]byte("boot log\r\n"))
+	time.Sleep(50 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/sessions/" + created.SessionID + "/pty"
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: c})
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close(websocket.StatusNormalClosure, "")
+
+	typ, msg, err := conn.Read(ctx)
+	if err != nil || typ != websocket.MessageBinary || string(msg) != "boot log\r\n" {
+		t.Fatalf("replay: %v %v %q", typ, err, msg)
+	}
+	deadline := time.Now().Add(time.Second)
+	for live.Attached() != 1 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if live.Attached() != 1 {
+		t.Fatalf("attached = %d", live.Attached())
+	}
+
+	// Live output streams through.
+	proc.stdoutW.Write([]byte("$ "))
+	_, msg, err = conn.Read(ctx)
+	if err != nil || string(msg) != "$ " {
+		t.Fatalf("stream: %v %q", err, msg)
+	}
+
+	// Keystrokes reach the serial stdin; resize lands on the session.
+	if err := conn.Write(ctx, websocket.MessageBinary, []byte("ls\r")); err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.Write(ctx, websocket.MessageText, []byte(`{"type":"resize","cols":132,"rows":43}`)); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		cols, rows := live.WindowSize()
+		if proc.stdinString() == "ls\r" && cols == 132 && rows == 43 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if cols, rows := live.WindowSize(); proc.stdinString() != "ls\r" || cols != 132 || rows != 43 {
+		t.Fatalf("stdin=%q size=%dx%d", proc.stdinString(), cols, rows)
+	}
+
+	// Destroying the VM closes the socket with the "vm exited" reason.
+	if err := host.Destroy(created.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = conn.Read(ctx)
+	var ce websocket.CloseError
+	if err == nil || !asCloseError(err, &ce) || ce.Reason != "vm exited" {
+		t.Fatalf("expected vm exited close, got %v", err)
+	}
+	deadline = time.Now().Add(time.Second)
+	for live.Attached() != 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if live.Attached() != 0 {
+		t.Fatal("client still counted as attached after close")
+	}
+}
+
+func asCloseError(err error, ce *websocket.CloseError) bool {
+	return errors.As(err, ce)
+}
+
+// TestWithPostgres runs the boot + describe flow against a real database
+// when DATABASE_URL is reachable; skipped otherwise.
+func TestWithPostgres(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short mode")
+	}
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		url = "postgres://microvm:microvm@localhost:5432/microvm?sslmode=disable"
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	c, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPClient: client})
+	store, err := db.Open(ctx, url)
 	if err != nil {
-		t.Fatalf("ws dial: %v", err)
+		t.Skipf("skip: no DB at %s: %v", url, err)
 	}
-	defer c.Close(websocket.StatusNormalClosure, "")
+	defer store.Close()
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
 
-	_, msg, err := c.Read(ctx)
-	if err != nil {
-		t.Fatalf("ws read: %v", err)
-	}
-	if !bytes.Contains(msg, []byte(`"type"`)) {
-		t.Fatalf("ws replay not event json: %s", msg)
+	srv, _ := testServer(t, store, &consoleLauncher{}, 2)
+	c := newClient(t)
+	login(t, c, srv.URL, "pg", testPassword)
+	var created api.CreateSessionResponse
+	mustJSON(t, postJSON(t, c, srv.URL+"/sessions", map[string]any{}), &created)
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/sessions/"+created.SessionID, nil)
+	resp, _ := c.Do(req)
+	resp.Body.Close()
+	row, err := store.GetSession(ctx, uuid.MustParse(created.SessionID))
+	if err != nil || row.Owner != "pg" {
+		t.Fatalf("row: %+v %v", row, err)
 	}
 }

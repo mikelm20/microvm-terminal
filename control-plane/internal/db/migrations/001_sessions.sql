@@ -2,19 +2,15 @@
 -- +goose StatementBegin
 create table sessions (
   id uuid primary key,
-  identity_uuid uuid not null references identities(uuid),
-  lesson_id text not null,
-  lang text not null,
-  department text,
+  owner text not null,
   vm_ip inet,
   warm boolean not null default false,
   created_at timestamptz not null default now(),
   ready_at timestamptz,
   reaped_at timestamptz,
-  grace_started_at timestamptz,
-  last_event_at timestamptz
+  last_attached_at timestamptz
 );
-create index sessions_identity_idx on sessions (identity_uuid);
+create index sessions_owner_idx on sessions (owner, created_at desc);
 create index sessions_alive_idx on sessions (reaped_at) where reaped_at is null;
 -- +goose StatementEnd
 

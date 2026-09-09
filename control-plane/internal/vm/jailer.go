@@ -1,9 +1,7 @@
 // Package vm wraps Firecracker in Jailer so every microVM runs under a
-// seccomp filter, a chroot, and a cgroup. Any code that used to invoke
-// `firecracker --api-sock ... --config-file ...` now routes through
-// LaunchJailed, which prepares the chroot, materialises the rootfs + kernel
-// inside it, and runs jailer with the right flags. The returned handle is the
-// same firecracker.Process type the rest of the control plane already holds.
+// seccomp filter, a chroot, and a cgroup. LaunchJailed prepares the chroot,
+// materialises the rootfs + kernel inside it, and runs jailer with the right
+// flags. The returned handle has the same surface as firecracker.Process.
 package vm
 
 import (
@@ -27,15 +25,17 @@ type JailedSpec struct {
 	firecracker.LaunchSpec
 
 	// JailerBin is the jailer wrapper script. Defaults to
-	// /usr/local/libexec/learn-platform/jailer.sh which ships with this repo.
-	// Must exist and be executable as root; it drops privileges internally.
+	// /usr/local/libexec/microvm-terminal/jailer.sh which ships with this
+	// repo. Must exist and be executable as root; it drops privileges
+	// internally.
 	JailerBin string
 
-	// JailerUID and JailerGID identify the unprivileged user that jailer
-	// execs firecracker as. Defaults: the `learn` system user. Bootstrap
-	// creates this user; the script aborts otherwise.
-	JailerUID int
-	JailerGID int
+	// JailerUser is the unprivileged system user jailer execs firecracker
+	// as, looked up with getent when JailerUID/JailerGID are zero. Defaults
+	// to "microvm", which infra/bootstrap.sh creates.
+	JailerUser string
+	JailerUID  int
+	JailerGID  int
 
 	// VMID is the unique identifier used to scope the chroot and cgroup.
 	// Callers typically pass the control plane's session id (UUID); the
@@ -64,7 +64,7 @@ func LaunchJailed(ctx context.Context, spec JailedSpec) (*Process, error) {
 		return nil, errors.New("vm: JailedSpec.VMID required")
 	}
 	if spec.JailerBin == "" {
-		spec.JailerBin = "/usr/local/libexec/learn-platform/jailer.sh"
+		spec.JailerBin = "/usr/local/libexec/microvm-terminal/jailer.sh"
 	}
 	if spec.ChrootBase == "" {
 		spec.ChrootBase = "/srv/jailer"
@@ -75,10 +75,13 @@ func LaunchJailed(ctx context.Context, spec JailedSpec) (*Process, error) {
 	if spec.MemBytes == 0 {
 		spec.MemBytes = 1 << 30 // 1 GiB
 	}
+	if spec.JailerUser == "" {
+		spec.JailerUser = "microvm"
+	}
 	if spec.JailerUID == 0 || spec.JailerGID == 0 {
-		uid, gid, err := lookupLearnUser()
+		uid, gid, err := lookupUser(spec.JailerUser)
 		if err != nil {
-			return nil, fmt.Errorf("vm: lookup learn user: %w", err)
+			return nil, fmt.Errorf("vm: lookup user %s: %w", spec.JailerUser, err)
 		}
 		if spec.JailerUID == 0 {
 			spec.JailerUID = uid
@@ -203,13 +206,13 @@ func (p *Process) Wait() error {
 	return p.cmd.Wait()
 }
 
-// lookupLearnUser returns the uid/gid for the `learn` system user. The user
-// is provisioned by infra/bootstrap.sh. Tests can short-circuit by providing
-// explicit UID/GID in JailedSpec.
-func lookupLearnUser() (int, int, error) {
+// lookupUser returns the uid/gid for a system user. The user is provisioned
+// by infra/bootstrap.sh. Tests can short-circuit by providing explicit
+// UID/GID in JailedSpec.
+func lookupUser(name string) (int, int, error) {
 	// os/user avoided to keep this file free of cgo dependencies on Linux
 	// builds. getent is always present on Ubuntu.
-	out, err := exec.Command("getent", "passwd", "learn").Output()
+	out, err := exec.Command("getent", "passwd", name).Output()
 	if err != nil {
 		return 0, 0, fmt.Errorf("getent: %w", err)
 	}

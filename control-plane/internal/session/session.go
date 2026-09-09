@@ -3,14 +3,13 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // VMProcess abstracts both firecracker.Process (direct launch) and
@@ -33,16 +32,9 @@ type Session struct {
 	Hostname     string
 	SessionToken string // injected via kernel cmdline; guest-agent hello must match
 
-	// IdentityUUID is the learner the session belongs to. Set by the Manager
-	// after allocation. WS/HTTP handlers gate access on this.
-	IdentityUUID uuid.UUID
-
-	// LessonID the session is serving. Informational; predicate evaluation
-	// lives in internal/lesson (Agent-Spine).
-	LessonID string
-
-	// Lang is the session locale (mirrors lessons/<id>.<lang>.yml).
-	Lang string
+	// Owner is the login name the session belongs to. Set by the HTTP layer
+	// right after creation; the PTY and delete handlers gate access on it.
+	Owner string
 
 	Process VMProcess
 	VmDir   string
@@ -50,13 +42,6 @@ type Session struct {
 	// Serial drains Process.Stdout() into a ring buffer and broadcasts new bytes
 	// to the currently-attached WebSocket client (if any).
 	Serial *SerialTee
-
-	// Events is a fan-out bus for guest-agent events over vsock. Wizard WS
-	// subscribers receive from here.
-	Events *EventBus
-
-	// claudeBusy tracks the last claude_busy event. Reads via GetClaudeBusy().
-	claudeBusy atomic.Bool
 
 	// Warm reports whether this session was served from the warm pool.
 	Warm bool
@@ -73,18 +58,25 @@ type Session struct {
 	// if any. Use SendToGuest to write to it safely.
 	guestMu   sync.Mutex
 	guestConn net.Conn
+
+	// Terminal geometry last requested by a browser. The serial console has
+	// no window size of its own, so the value is pushed to the guest agent,
+	// which applies it to /dev/ttyS0 with TIOCSWINSZ.
+	winMu sync.Mutex
+	cols  uint16
+	rows  uint16
+
+	// Attach bookkeeping for the idle reaper.
+	attachMu   sync.Mutex
+	attached   int
+	lastDetach time.Time
 }
 
 // MarkReady records the moment the guest-agent handshake completed and
 // unblocks any WaitReady waiters. Idempotent. Called by the vsock listener
 // after the hello frame validates.
-//
-// Callers must have initialised s.ready (all the constructors in this
-// package do). Panics if s.ready is nil to surface misuse loudly.
 func (s *Session) MarkReady() {
 	if s.ready == nil {
-		// Defensive: make it non-nil so the panic path stays noisy but
-		// the daemon does not crash on a single session init bug.
 		s.ready = make(chan struct{})
 	}
 	s.readyOnce.Do(func() {
@@ -107,7 +99,6 @@ func (s *Session) ReadyAt() time.Time {
 // Returns nil on ready, or ctx.Err() otherwise.
 func (s *Session) WaitReady(ctx context.Context) error {
 	if s.ready == nil {
-		// NewInMemorySession path: no boot, no wait.
 		return nil
 	}
 	select {
@@ -128,9 +119,15 @@ func (s *Session) SetGuestConn(c net.Conn) {
 	s.guestMu.Unlock()
 }
 
+// GuestMessage is the frame shape the control plane writes to the guest
+// agent over vsock. Today the only type is "resize".
+type GuestMessage struct {
+	Type    string         `json:"type"`
+	Payload map[string]any `json:"payload,omitempty"`
+}
+
 // SendToGuest marshals msg as JSON and writes it on the guest connection.
-// Returns an error if no guest is attached or the write fails. The guest-agent
-// knows one type today, "config".
+// Returns ErrNoGuest if no guest is attached.
 func (s *Session) SendToGuest(msg any) error {
 	s.guestMu.Lock()
 	c := s.guestConn
@@ -147,6 +144,81 @@ func (s *Session) SendToGuest(msg any) error {
 	return err
 }
 
+// Resize records the terminal geometry and forwards it to the guest agent
+// when one is attached. When the guest is not attached yet the value is kept
+// and pushed by the vsock listener as soon as the handshake completes, so a
+// browser that connects during boot still gets a correctly sized tty.
+func (s *Session) Resize(cols, rows uint16) error {
+	if cols == 0 || rows == 0 {
+		return errors.New("resize: cols and rows must be positive")
+	}
+	s.winMu.Lock()
+	s.cols, s.rows = cols, rows
+	s.winMu.Unlock()
+	err := s.SendToGuest(resizeMessage(cols, rows))
+	if errors.Is(err, ErrNoGuest) {
+		return nil
+	}
+	return err
+}
+
+// WindowSize returns the last geometry requested by a client. Zero values
+// mean no client has sent one yet.
+func (s *Session) WindowSize() (cols, rows uint16) {
+	s.winMu.Lock()
+	defer s.winMu.Unlock()
+	return s.cols, s.rows
+}
+
+func resizeMessage(cols, rows uint16) GuestMessage {
+	return GuestMessage{Type: "resize", Payload: map[string]any{"cols": cols, "rows": rows}}
+}
+
+// Attach registers a terminal client. The returned function detaches it and
+// stamps the moment the session became idle. The idle reaper only considers
+// sessions with zero attached clients.
+func (s *Session) Attach() func() {
+	s.attachMu.Lock()
+	s.attached++
+	s.attachMu.Unlock()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.attachMu.Lock()
+			s.attached--
+			if s.attached == 0 {
+				s.lastDetach = time.Now()
+			}
+			s.attachMu.Unlock()
+		})
+	}
+}
+
+// Attached returns the number of terminal clients currently connected.
+func (s *Session) Attached() int {
+	s.attachMu.Lock()
+	defer s.attachMu.Unlock()
+	return s.attached
+}
+
+// IdleSince reports when the session last lost its final client. For a
+// session that never had a client it is the ready time, or the creation
+// time if the guest never handshaked. ok is false while a client is attached.
+func (s *Session) IdleSince() (t time.Time, ok bool) {
+	s.attachMu.Lock()
+	defer s.attachMu.Unlock()
+	if s.attached > 0 {
+		return time.Time{}, false
+	}
+	if !s.lastDetach.IsZero() {
+		return s.lastDetach, true
+	}
+	if r := s.ReadyAt(); !r.IsZero() {
+		return r, true
+	}
+	return s.createdAt, true
+}
+
 // CreatedAt returns the session's launch time.
 func (s *Session) CreatedAt() time.Time { return s.createdAt }
 
@@ -155,12 +227,10 @@ func (s *Session) CreatedAt() time.Time { return s.createdAt }
 func NewInMemorySession(id string) *Session {
 	s := &Session{
 		ID:        id,
-		Events:    NewEventBus(),
 		createdAt: time.Now(),
 		done:      make(chan struct{}),
 		ready:     make(chan struct{}),
 	}
-	// In-memory sessions are ready the moment they exist.
 	s.MarkReady()
 	return s
 }
@@ -171,9 +241,6 @@ func (s *Session) Done() <-chan struct{} { return s.done }
 // CloseDone closes the done channel. Idempotent and safe to call from
 // several goroutines at once: Manager.Destroy, Host.Destroy and the reaper
 // goroutine that watches the Firecracker process can all race to close it.
-// A sync.Once (rather than a select on the channel) is what makes the
-// concurrent case safe; the select form still double-closes when two callers
-// pass the default branch before either closes.
 func (s *Session) CloseDone() {
 	if s.done == nil {
 		return

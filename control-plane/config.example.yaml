@@ -1,0 +1,52 @@
+# Example config for microvm-terminal. Install as /etc/microvm-terminal/config.yaml.
+# Every value here is the default, so an empty file works. Environment
+# variables of the same name in upper case (LISTEN_ADDR, MAX_CONCURRENT,
+# VM_VCPU, VM_MEM_MIB, IDLE_TIMEOUT_SECONDS, PASSWORD_FILE, ...) override the
+# file; see control-plane/internal/config/config.go for the full list.
+
+listen_addr: 127.0.0.1:8080
+public_origin: http://localhost:8080
+database_url: postgres://microvm:microvm@localhost:5432/microvm?sslmode=disable
+
+# Login. One shared password, 8+ characters, one line. The cookie secret is
+# generated on first start when the file is missing.
+password_file: /etc/microvm-terminal/password
+cookie_secret_file: /etc/microvm-terminal/cookie-secret
+cookie_domain: ""
+secure_cookies: true
+
+# Capacity and lifetimes.
+max_concurrent: 3
+idle_timeout_seconds: 300   # destroy a VM with no attached terminal for this long; 0 disables
+boot_timeout_seconds: 90
+warm_pool_target: 0         # pre-booted VMs to keep ready; 0 disables the pool
+
+# What the guest sees.
+vm:
+  vcpu: 2
+  mem_mib: 2048
+
+# Firecracker artefacts and host layout.
+firecracker_bin: /usr/local/bin/firecracker
+jailer_bin: /usr/local/bin/jailer
+kernel_path: /var/lib/firecracker/images/vmlinux
+rootfs_path: /var/lib/firecracker/images/rootfs.ext4
+vm_data_dir: /var/lib/firecracker/vms
+bridge_name: fc-br0
+vm_cidr: 172.20.0.0/24
+
+# Single-line output of `claude setup-token`, mode 0600. Written into every
+# VM as ~/.claude/.credentials.json at rootfs prep.
+claude_oauth_token_file: /etc/microvm-terminal/claude-oauth-token
+
+jailer:
+  enabled: true
+  script: /usr/local/libexec/microvm-terminal/jailer.sh
+  chroot_base: /srv/jailer
+  seccomp_profile: /etc/microvm-terminal/jailer/seccomp.json
+  user: microvm
+  cpu_quota_us: 0   # 0 = one full core per vcpu
+  mem_bytes: 0      # 0 = vm.mem_mib + 256 MiB for the Firecracker process
+
+# Serve in-memory sessions without a hypervisor (API tests, macOS dev).
+use_mock_launcher: false

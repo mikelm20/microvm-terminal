@@ -1,5 +1,5 @@
 // Package session owns the life cycle of VM sessions. One Manager per daemon;
-// at most N concurrent sessions (MVP cap = 3).
+// at most MaxConcurrent sessions at a time.
 package session
 
 import (
@@ -24,6 +24,13 @@ import (
 	"github.com/mikelm20/learn-platform/control-plane/internal/vm"
 )
 
+// Kernel command line parameters consumed by the guest agent.
+const (
+	cmdlineTokenKey = "mvt.session_token"
+	cmdlineVsockKey = "mvt.vsock_port"
+	guestVsockPort  = 5555
+)
+
 type Manager struct {
 	cfg       config.Config
 	logger    *slog.Logger
@@ -35,11 +42,11 @@ type Manager struct {
 }
 
 func NewManager(cfg config.Config, logger *slog.Logger) (*Manager, error) {
-	alloc, err := netalloc.New(cfg.VmCIDRBase)
+	alloc, err := netalloc.New(cfg.VMCIDR)
 	if err != nil {
 		return nil, fmt.Errorf("netalloc: %w", err)
 	}
-	subnet, err := netip.ParsePrefix(cfg.VmCIDRBase)
+	subnet, err := netip.ParsePrefix(cfg.VMCIDR)
 	if err != nil {
 		return nil, err
 	}
@@ -61,26 +68,11 @@ func NewManager(cfg config.Config, logger *slog.Logger) (*Manager, error) {
 	}, nil
 }
 
-// CreateOptions are the tunable inputs Create exposes. Zero values produce
-// the default F2 lab VM (stock rootfs, empresa-prueba cwd, no system prompt
-// priming). Capstone handlers populate fields to override.
-type CreateOptions struct {
-	// RootfsOverrides is passed to PrepareRootfs. An empty struct means
-	// "use the baked learn-shell and baked CLAUDE.md only".
-	RootfsOverrides firecracker.RootfsOverrides
-}
-
 // Create allocates resources, prepares a per-VM rootfs, launches Firecracker,
 // and returns a Session ready for PTY attachment. The ctx parameter bounds the
 // creation sequence (rootfs prep, process start) but NOT the VM lifetime.
 func (m *Manager) Create(ctx context.Context) (*Session, error) {
-	return m.CreateWith(ctx, CreateOptions{})
-}
-
-// CreateWith is the overridable entry point. Kept separate from Create to
-// avoid churning every test call site when new options are added.
-func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session, error) {
-	_ = ctx // used for cancelling the prep steps via their own timeouts; VM lifetime is manager-owned
+	_ = ctx // prep steps carry their own timeouts; VM lifetime is manager-owned
 	m.mu.Lock()
 	if len(m.sessions) >= m.cfg.MaxConcurrent {
 		m.mu.Unlock()
@@ -108,7 +100,7 @@ func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session,
 	sessionToken := hex.EncodeToString(tokBytes)
 
 	sid := uuid.NewString()
-	vmDir := filepath.Join(m.cfg.VmDataDir, sid)
+	vmDir := filepath.Join(m.cfg.VMDataDir, sid)
 	if err := os.MkdirAll(vmDir, 0o755); err != nil {
 		_ = firecracker.DeleteTAP(tap)
 		m.allocator.Release(ip)
@@ -122,24 +114,23 @@ func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session,
 		return nil, fmt.Errorf("read token file: %w", err)
 	}
 
-	hostname := fmt.Sprintf("learn-vm-%s", shortID(sid))
-	if err := firecracker.PrepareRootfs(m.cfg.RootfsPath, rootfs, ip, m.allocator.PrefixLen(), m.allocator.HostAddr(), hostname, token, opts.RootfsOverrides); err != nil {
+	hostname := fmt.Sprintf("vm-%s", shortID(sid))
+	if err := firecracker.PrepareRootfs(m.cfg.RootfsPath, rootfs, ip, m.allocator.PrefixLen(), m.allocator.HostAddr(), hostname, token); err != nil {
 		cleanup(vmDir, tap, m.allocator, ip)
 		return nil, fmt.Errorf("prepare rootfs: %w", err)
 	}
 	m.logger.Info("vm boot: rootfs ready", "session", sid, "path", rootfs)
 
-	// The VM lives past the creating HTTP request; use a manager-owned context
-	// rather than the request context (which would kill it on handler return).
 	vsockUDS := filepath.Join(vmDir, "fc.vsock")
-	bootArgs := fmt.Sprintf("console=ttyS0 reboot=k panic=1 pci=off rw learn.session_token=%s learn.vsock_port=5555", sessionToken)
+	bootArgs := fmt.Sprintf("console=ttyS0 reboot=k panic=1 pci=off rw %s=%s %s=%d",
+		cmdlineTokenKey, sessionToken, cmdlineVsockKey, guestVsockPort)
 	fcSpec := firecracker.LaunchSpec{
 		BinaryPath: m.cfg.FirecrackerBin,
 		VMDir:      vmDir,
 		KernelPath: m.cfg.KernelPath,
 		RootfsPath: rootfs,
-		VcpuCount:  2,
-		MemMiB:     2048,
+		VcpuCount:  m.cfg.VM.Vcpu,
+		MemMiB:     m.cfg.VM.MemMiB,
 		TapName:    tap,
 		GuestMAC:   mac,
 		BootArgs:   bootArgs,
@@ -149,7 +140,7 @@ func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session,
 	m.logger.Info("vm boot: kernel start requested",
 		"session", sid, "kernel", fcSpec.KernelPath, "rootfs", fcSpec.RootfsPath,
 		"vcpu", fcSpec.VcpuCount, "mem_mib", fcSpec.MemMiB,
-		"jailer", m.cfg.UseJailer)
+		"jailer", m.cfg.Jailer.Enabled)
 
 	proc, err := m.launchVM(sid, fcSpec)
 	if err != nil {
@@ -174,8 +165,6 @@ func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session,
 		// output, not a blank screen. Plus it keeps the pipe drained so FC
 		// never blocks on write when no one is attached.
 		Serial: NewSerialTee(proc.Stdout(), 256*1024),
-		// Event bus for guest-agent events relayed via vsock.
-		Events: NewEventBus(),
 	}
 	m.mu.Lock()
 	m.sessions[sid] = s
@@ -199,17 +188,18 @@ func (m *Manager) CreateWith(ctx context.Context, opts CreateOptions) (*Session,
 // or firecracker.Launch (when jailer is disabled, e.g. bring-up on a clean
 // box). Both return a VMProcess-compatible handle.
 func (m *Manager) launchVM(sid string, spec firecracker.LaunchSpec) (VMProcess, error) {
-	if m.cfg.UseJailer {
+	if m.cfg.Jailer.Enabled {
 		js := vm.JailedSpec{
 			LaunchSpec:     spec,
 			VMID:           sid,
-			JailerBin:      m.cfg.JailerScript,
-			ChrootBase:     m.cfg.JailerChrootBase,
-			CPUQuotaMicros: m.cfg.JailerCPUQuotaMicros,
-			MemBytes:       m.cfg.JailerMemBytes,
-			SeccompProfile: m.cfg.JailerSeccompProfile,
-			JailerUID:      m.cfg.JailerUID,
-			JailerGID:      m.cfg.JailerGID,
+			JailerBin:      m.cfg.Jailer.Script,
+			ChrootBase:     m.cfg.Jailer.ChrootBase,
+			CPUQuotaMicros: m.cfg.JailerCPUQuotaMicros(),
+			MemBytes:       m.cfg.JailerMemBytes(),
+			SeccompProfile: m.cfg.Jailer.SeccompProfile,
+			JailerUser:     m.cfg.Jailer.User,
+			JailerUID:      m.cfg.Jailer.UID,
+			JailerGID:      m.cfg.Jailer.GID,
 		}
 		return vm.LaunchJailed(context.Background(), js)
 	}
@@ -241,9 +231,9 @@ func (m *Manager) Destroy(id string) error {
 	delete(m.sessions, id)
 	m.mu.Unlock()
 
-	// Signal listeners (vsock, wizard WS) to stop. CloseDone is guarded by
-	// a sync.Once because Host.Destroy and the reaper goroutine in CreateWith
-	// can both reach here for the same session.
+	// Signal listeners (vsock, PTY) to stop. CloseDone is guarded by a
+	// sync.Once because Host.Destroy and the reaper goroutine in Create can
+	// both reach here for the same session.
 	s.CloseDone()
 
 	_ = s.Process.Stop()

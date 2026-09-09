@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>microVM terminal - {{.Owner}}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<style>
+  :root { color-scheme: dark; }
+  html, body { height: 100%; margin: 0; background: #0b0b0c; color: #e6e6e6; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #bar { display: flex; align-items: center; gap: 14px; padding: 6px 12px; background: #141416; border-bottom: 1px solid #262629; font-size: 12px; height: 33px; }
+  #bar .who { color: #a0a0a8; }
+  #bar .who strong { color: #e6e6e6; }
+  #bar .status { color: #8a8a92; font-family: ui-monospace, Menlo, monospace; }
+  #bar .spacer { flex: 1; }
+  #bar button, #bar a { background: none; border: 1px solid #333338; color: #c8c8d0; border-radius: 6px; padding: 3px 9px; font-size: 12px; cursor: pointer; text-decoration: none; }
+  #bar button:hover, #bar a:hover { border-color: #666; color: #fff; }
+  #term { height: calc(100% - 33px); width: 100%; padding: 8px; box-sizing: border-box; }
+  #overlay { position: fixed; inset: 33px 0 0 0; display: none; place-items: center; background: rgba(11, 11, 12, 0.85); }
+  #overlay .box { text-align: center; max-width: 420px; padding: 24px; border: 1px solid #333338; border-radius: 12px; background: #141416; }
+  #overlay h2 { margin: 0 0 8px; font-size: 16px; }
+  #overlay p { margin: 0 0 16px; color: #a0a0a8; font-size: 13px; line-height: 1.5; }
+  #overlay button { background: #4f8cff; color: #fff; border: 0; border-radius: 8px; padding: 9px 16px; font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span class="who">VM for <strong>{{.Owner}}</strong></span>
+  <span class="status" id="status">starting</span>
+  <span class="spacer"></span>
+  <button id="newvm" type="button">New VM</button>
+  <a href="/logout">Log out</a>
+</div>
+<div id="term"></div>
+<div id="overlay"><div class="box"><h2 id="ov-title">VM ended</h2><p id="ov-text"></p><button id="ov-btn" type="button">New VM</button></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var term = new Terminal({
+    cursorBlink: true,
+    fontFamily: 'Menlo, Consolas, "DejaVu Sans Mono", monospace',
+    fontSize: 13,
+    theme: { background: '#0b0b0c', foreground: '#e6e6e6' },
+    scrollback: 10000,
+  });
+  var fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(document.getElementById('term'));
+  fit.fit();
+
+  var statusEl = document.getElementById('status');
+  var overlay = document.getElementById('overlay');
+  var sessionId = null;
+  var ws = null;
+  var closing = false;      // true while we tear the VM down on purpose
+  var attempts = 0;
+  var reconnectTimer = null;
+  var encoder = new TextEncoder();
+
+  function setStatus(s) { statusEl.textContent = s; }
+
+  function showOverlay(title, text, buttonLabel, onClick) {
+    document.getElementById('ov-title').textContent = title;
+    document.getElementById('ov-text').textContent = text;
+    var btn = document.getElementById('ov-btn');
+    btn.textContent = buttonLabel;
+    btn.onclick = function () { overlay.style.display = 'none'; onClick(); };
+    overlay.style.display = 'grid';
+  }
+
+  function api(method, path, body) {
+    var opts = { method: method, credentials: 'same-origin', headers: {} };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(path, opts).then(function (r) {
+      if (r.status === 401) { location.href = '/'; throw new Error('logged out'); }
+      return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, body: j }; });
+    });
+  }
+
+  // 1. Find a live VM or boot one.
+  function boot() {
+    closing = false;
+    attempts = 0;
+    term.reset();
+    setStatus('checking for a running VM');
+    return api('GET', '/sessions/current').then(function (r) {
+      if (r.status === 200 && r.body.alive) {
+        sessionId = r.body.session_id;
+        setStatus('reattaching');
+        return;
+      }
+      setStatus('booting VM');
+      term.write('\x1b[90mBooting your microVM...\x1b[0m\r\n');
+      return api('POST', '/sessions', {}).then(function (r2) {
+        if (r2.status !== 200) {
+          var msg = (r2.body && r2.body.message) || ('HTTP ' + r2.status);
+          var retry = r2.body && r2.body.retry_after_seconds;
+          setStatus('boot failed');
+          showOverlay('Could not boot a VM', msg + (retry ? ' Try again in ' + retry + ' s.' : ''), 'Try again', boot);
+          throw new Error(msg);
+        }
+        sessionId = r2.body.session_id;
+      });
+    }).then(connect).catch(function (e) { console.warn(e); });
+  }
+
+  // 2. Attach to the serial console.
+  function connect() {
+    if (!sessionId) return;
+    var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(proto + '://' + location.host + '/sessions/' + sessionId + '/pty');
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen = function () {
+      attempts = 0;
+      setStatus('connected');
+      fit.fit();
+      sendResize();
+      term.focus();
+    };
+    ws.onmessage = function (ev) {
+      if (ev.data instanceof ArrayBuffer) {
+        term.write(new Uint8Array(ev.data));
+      } else {
+        term.write(ev.data);
+      }
+    };
+    ws.onclose = function (ev) {
+      ws = null;
+      if (closing) return;
+      if (ev.reason === 'vm exited') { vmGone('The VM shut down.'); return; }
+      setStatus('disconnected');
+      // Is the VM still there? Reconnect with backoff if so; otherwise offer a new one.
+      api('GET', '/sessions/' + sessionId).then(function (r) {
+        if (r.status === 200 && r.body.alive) {
+          scheduleReconnect();
+        } else {
+          vmGone(r.body && r.body.reaped_at ? 'The VM was reaped after sitting idle.' : 'The VM is gone.');
+        }
+      }).catch(function () { scheduleReconnect(); });
+    };
+    ws.onerror = function () { /* onclose follows */ };
+  }
+
+  function scheduleReconnect() {
+    attempts += 1;
+    if (attempts > 8) { vmGone('Could not reconnect to the VM.'); return; }
+    var delay = Math.min(1000 * Math.pow(2, attempts - 1), 15000);
+    setStatus('reconnecting in ' + Math.round(delay / 1000) + ' s');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(function () {
+      // The server replays its ring buffer on attach; clear first so the
+      // screen is not painted twice.
+      term.reset();
+      connect();
+    }, delay);
+  }
+
+  function vmGone(why) {
+    setStatus('vm ended');
+    term.write('\r\n\x1b[31m[' + why + ']\x1b[0m\r\n');
+    showOverlay('VM ended', why + ' Boot a new one to continue. Nothing from the old VM is kept.', 'New VM', boot);
+  }
+
+  function sendResize() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+  }
+
+  term.onData(function (data) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(encoder.encode(data));
+  });
+  term.onResize(sendResize);
+  window.addEventListener('resize', function () { fit.fit(); });
+
+  document.getElementById('newvm').onclick = function () {
+    if (!sessionId) { boot(); return; }
+    closing = true;
+    clearTimeout(reconnectTimer);
+    setStatus('shutting down');
+    if (ws) { try { ws.close(); } catch (e) {} }
+    api('DELETE', '/sessions/' + sessionId).catch(function () {}).then(function () {
+      sessionId = null;
+      boot();
+    });
+  };
+
+  boot();
+})();
+</script>
+</body>
+</html>

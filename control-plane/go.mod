@@ -7,7 +7,6 @@ require (
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
-	github.com/mikelm20/learn-platform/vm-image/claude-wrap v0.0.0
 	github.com/prometheus/client_golang v1.21.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -29,5 +28,3 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 )
-
-replace github.com/mikelm20/learn-platform/vm-image/claude-wrap => ../vm-image/claude-wrap

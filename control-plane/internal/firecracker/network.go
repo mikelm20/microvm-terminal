@@ -9,9 +9,8 @@ import (
 // EnsureBridge creates the host bridge if missing, assigns the host IP, enables
 // IP forwarding, and installs NAT rules. Idempotent.
 //
-// upstreamIface is the interface with the default route (e.g., "eno1"); on
-// learn-01 this is hard-coded at call time by the session manager which reads
-// it from `ip route`.
+// upstreamIface is the interface with the default route (e.g., "eno1"); the
+// session manager reads it from `ip route` at startup.
 func EnsureBridge(bridgeName string, hostAddr netip.Addr, prefixLen int, subnet netip.Prefix, upstreamIface string) error {
 	if err := ensureLink(bridgeName, "bridge"); err != nil {
 		return fmt.Errorf("bridge: %w", err)

@@ -66,9 +66,9 @@ func Launch(ctx context.Context, spec LaunchSpec) (*Process, error) {
 			HostDevName: spec.TapName,
 		}},
 		MachineConfig: fcMachineConfig{
-			VcpuCount: spec.VcpuCount,
+			VcpuCount:  spec.VcpuCount,
 			MemSizeMiB: spec.MemMiB,
-			Smt:       false,
+			Smt:        false,
 		},
 	}
 	if spec.VsockCID > 0 && spec.VsockUDS != "" {
@@ -182,4 +182,3 @@ type fcMachineConfig struct {
 	MemSizeMiB int  `json:"mem_size_mib"`
 	Smt        bool `json:"smt"`
 }
-

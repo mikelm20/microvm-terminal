@@ -14,13 +14,13 @@ import (
 )
 
 type Allocator struct {
-	mu      sync.Mutex
-	base    netip.Prefix // e.g., 172.20.0.0/24
-	host    netip.Addr   // reserved for the bridge, not handed out
-	next    netip.Addr   // next candidate
-	in_use  map[netip.Addr]bool
-	tapIdx  int
-	cidIdx  uint32 // Firecracker guest vsock CIDs; start at 100, monotonic
+	mu     sync.Mutex
+	base   netip.Prefix // e.g., 172.20.0.0/24
+	host   netip.Addr   // reserved for the bridge, not handed out
+	next   netip.Addr   // next candidate
+	in_use map[netip.Addr]bool
+	tapIdx int
+	cidIdx uint32 // Firecracker guest vsock CIDs; start at 100, monotonic
 }
 
 // New parses cidr (e.g. "172.20.0.0/24") and returns an allocator. The first
