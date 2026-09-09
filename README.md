@@ -169,7 +169,7 @@ With the mock launcher the login, pages and sessions API work, but the terminal 
 
 ## Lineage
 
-Derived from the VM layer of a browser-based training platform (Firecracker control plane, jailer, seccomp, nftables, serial-console bridge) and from a small host-uid launcher (password login, xterm page, resize and keepalive over WebSocket, the menu loop). The lesson engine, wizard, event pipeline and per-user Unix accounts were removed; the idle reaper, the resize path through the guest agent and the client reconnect were added.
+Derived from the VM layer of a browser-based training platform (Firecracker control plane, jailer, seccomp, nftables, serial-console bridge) and from a small host-uid launcher (password login, xterm page, resize and keepalive over WebSocket, the menu loop). The training content, its guided sidebar, the in-guest event pipeline and the per-user Unix accounts were removed; the idle reaper, the resize path through the guest agent and the client reconnect were added.
 
 ## License
 
