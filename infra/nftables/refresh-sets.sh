@@ -3,7 +3,7 @@
 # refresh-sets.sh - resolve allowlisted FQDNs into A records and push them
 # into the nftables sets `anthropic_v4` and `apt_v4`.
 #
-# Triggered by learn-nftables-refresh.service (oneshot) on boot, and by its
+# Triggered by microvm-nftables-refresh.service (oneshot) on boot, and by its
 # sibling .timer nightly. Safe to run ad hoc. Idempotent: existing elements
 # are replaced, not appended.
 
@@ -32,9 +32,9 @@ flush_and_fill() {
   local tmp
   tmp="$(mktemp)"
   {
-    echo "flush set inet learn ${set_name}"
+    echo "flush set inet microvm ${set_name}"
     if [[ ${#ips[@]} -gt 0 ]]; then
-      echo "add element inet learn ${set_name} { $(IFS=,; echo "${ips[*]}") }"
+      echo "add element inet microvm ${set_name} { $(IFS=,; echo "${ips[*]}") }"
     fi
   } > "${tmp}"
   nft -f "${tmp}"

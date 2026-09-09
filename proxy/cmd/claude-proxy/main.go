@@ -1,8 +1,8 @@
-// claude-proxy is the Platform-owned Anthropic gateway. Every VM forwards its
-// Claude API calls through :8443 with a bearer session token. The proxy
+// claude-proxy is an optional Anthropic gateway. When deployed, a VM forwards
+// its Claude API calls through :8443 with a bearer session token. The proxy
 // looks up the backing Anthropic API key, enforces per-session quota, writes
-// an audit row, and streams the response back. The shared Max-plan token is
-// sunset; no VM holds Anthropic credentials directly.
+// an audit row, and streams the response back, so no VM needs to hold
+// Anthropic credentials directly.
 package main
 
 import (
@@ -43,7 +43,7 @@ func main() {
 
 	poolKeys, err := keys.LoadFromEnv()
 	if err != nil {
-		logger.Error("keys: load from env failed", "err", err, "hint", "set ANTHROPIC_API_KEYS (JSON array) via doppler run")
+		logger.Error("keys: load from env failed", "err", err, "hint", "set ANTHROPIC_API_KEYS (JSON array) in the environment")
 		os.Exit(2)
 	}
 	pool := keys.New(poolKeys)

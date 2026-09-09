@@ -5,7 +5,7 @@
 # Called once per VM by the control plane. Translates a flat set of flags into
 # the args Firecracker's jailer expects, assembles the chroot, creates a cgroup
 # v2 leaf with CPU + memory limits, and execs jailer. jailer in turn drops to
-# the unprivileged learn user and enters a seccomp filter before launching
+# the unprivileged microvm user and enters a seccomp filter before launching
 # Firecracker inside the chroot.
 #
 # Usage:
@@ -87,7 +87,7 @@ if [[ "$SAFE_VMID" != "$VMID" ]]; then
 fi
 
 CHROOT_ROOT="${CHROOT_BASE}/firecracker/${SAFE_VMID}/root"
-CGROUP_DIR="/sys/fs/cgroup/learn/${SAFE_VMID}"
+CGROUP_DIR="/sys/fs/cgroup/microvm/${SAFE_VMID}"
 
 install -d -m 0755 "${CHROOT_BASE}"
 install -d -m 0755 "$(dirname "${CHROOT_ROOT}")"
@@ -101,8 +101,8 @@ fi
 # cgroup v2: create a leaf with cpu + memory controllers and set limits. The
 # jailer invocation joins this cgroup (via --cgroup cpu.max=...) so every
 # descendant inherits the caps.
-if [[ ! -d /sys/fs/cgroup/learn ]]; then
-  install -d -m 0755 /sys/fs/cgroup/learn
+if [[ ! -d /sys/fs/cgroup/microvm ]]; then
+  install -d -m 0755 /sys/fs/cgroup/microvm
 fi
 if [[ ! -d "${CGROUP_DIR}" ]]; then
   install -d -m 0755 "${CGROUP_DIR}"
@@ -110,7 +110,7 @@ fi
 # Ensure the controllers are enabled on the parent before leaf creation.
 # Idempotent: writing an already-enabled controller is a no-op.
 echo "+cpu +memory +pids" > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
-echo "+cpu +memory +pids" > /sys/fs/cgroup/learn/cgroup.subtree_control 2>/dev/null || true
+echo "+cpu +memory +pids" > /sys/fs/cgroup/microvm/cgroup.subtree_control 2>/dev/null || true
 
 # Firecracker docs: cpu.max takes "<quota> <period>". Period 100000 us = 100ms
 # is the default and plenty granular.

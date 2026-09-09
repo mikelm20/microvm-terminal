@@ -5,7 +5,7 @@
 # give us L2 reachability to every service; this script then drops egress
 # except to the claude-proxy service and the allowlisted fake-anthropic.
 #
-# Not a 1:1 of infra/nftables/learn.rules; the real rules run on the host
+# Not a 1:1 of infra/nftables/microvm.rules; the real rules run on the host
 # and match fc-br0 packets. Here we install container-local iptables rules
 # that produce the same *behaviour* from a curl's perspective.
 
@@ -27,7 +27,7 @@ else
   iptables -A OUTPUT -o lo -j ACCEPT
 
   # DNS resolution toward docker's embedded resolver must stay open so
-  # `curl learn.example.com` resolves and then gets blocked at L4 rather
+  # `curl example.com` resolves and then gets blocked at L4 rather
   # than failing earlier at DNS. Docker puts the resolver at 127.0.0.11.
   iptables -A OUTPUT -d 127.0.0.11 -p udp --dport 53 -j ACCEPT
   iptables -A OUTPUT -d 127.0.0.11 -p tcp --dport 53 -j ACCEPT

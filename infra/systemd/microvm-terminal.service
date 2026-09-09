@@ -1,0 +1,36 @@
+[Unit]
+Description=microvm-terminal control plane (Firecracker VM lifecycle + terminal bridge)
+Documentation=https://github.com/mikelm20/microvm-terminal
+After=network-online.target postgresql.service microvm-nftables.service
+Wants=network-online.target
+Requires=microvm-nftables.service
+
+[Service]
+Type=simple
+# Must be root for: loop mount per-VM rootfs, iptables, `ip link`, Firecracker KVM.
+# Firecracker itself drops to the microvm user under the jailer.
+User=root
+Group=root
+
+ExecStart=/usr/local/bin/microvm-terminal -config /etc/microvm-terminal/config.yaml
+# Optional overrides (LISTEN_ADDR, MAX_CONCURRENT, VM_VCPU, ...).
+EnvironmentFile=-/etc/microvm-terminal/control-plane.env
+Restart=on-failure
+RestartSec=5s
+# Drain in-flight sessions on shutdown
+TimeoutStopSec=45s
+KillMode=mixed
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=microvm-terminal
+
+# Light hardening that doesn't break Firecracker/ip/mount
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

@@ -1,40 +1,40 @@
 [Unit]
-Description=Jailed Firecracker microVM for learn-platform session %i
-Documentation=https://github.com/mikelm20/learn-platform/blob/main/infra/jailer/README.md
-After=network-online.target learn-nftables.service
-Requires=learn-nftables.service
+Description=Jailed Firecracker microVM for microvm-terminal session %i
+Documentation=https://github.com/mikelm20/microvm-terminal/blob/main/infra/jailer/README.md
+After=network-online.target microvm-nftables.service
+Requires=microvm-nftables.service
 
 [Service]
 # This template unit is started by the control plane via systemd-run, one
 # instance per VM: `systemctl start firecracker-jailer@<session-id>.service`.
 # The control plane typically launches jailer directly (cheaper fork, no
 # systemd roundtrip), but this unit exists so ops can:
-#   1. `systemctl stop firecracker-jailer@<id>` to kill a specific learner VM.
+#   1. `systemctl stop firecracker-jailer@<id>` to kill a specific VM.
 #   2. `journalctl -u firecracker-jailer@<id>` to get just that VM's serial.
 #
-# Environment variables come from /etc/learn-platform/session-%i.env, which
+# Environment variables come from /etc/microvm-terminal/session-%i.env, which
 # the control plane writes immediately before `systemctl start`.
 
 Type=simple
-EnvironmentFile=/etc/learn-platform/session-%i.env
-ExecStart=/usr/local/libexec/learn-platform/jailer.sh \
+EnvironmentFile=/etc/microvm-terminal/session-%i.env
+ExecStart=/usr/local/libexec/microvm-terminal/jailer.sh \
   --vm-id %i \
-  --uid ${LEARN_UID} \
-  --gid ${LEARN_GID} \
+  --uid ${JAILER_UID} \
+  --gid ${JAILER_GID} \
   --chroot-base /srv/jailer \
-  --cpu-quota-us 100000 \
-  --mem-bytes 1073741824 \
+  --cpu-quota-us 200000 \
+  --mem-bytes 2415919104 \
   --kernel ${KERNEL_PATH} \
   --rootfs ${ROOTFS_PATH} \
   --vm-dir ${VM_DIR} \
   --firecracker-bin /usr/local/bin/firecracker \
-  --seccomp-profile /etc/learn-platform/jailer/learn-seccomp.json \
+  --seccomp-profile /etc/microvm-terminal/jailer/seccomp.json \
   --vsock-uds ${VSOCK_UDS} \
   --vsock-cid ${VSOCK_CID} \
   --tap ${TAP} \
   --guest-mac ${GUEST_MAC} \
   --boot-args "${BOOT_ARGS}" \
-  --vcpu 1 --mem-mib 1024
+  --vcpu 2 --mem-mib 2048
 
 # Keep jailer-owned chroot across restarts? No. The control plane re-provisions
 # rootfs per session. On stop, jailer's chroot stays on disk and is GC'd by a
@@ -43,7 +43,7 @@ KillMode=mixed
 Restart=no
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/srv/jailer /var/lib/firecracker /etc/learn-platform
+ReadWritePaths=/srv/jailer /var/lib/firecracker /etc/microvm-terminal
 # jailer and firecracker need /dev/kvm, /dev/net/tun, and the vsock device.
 DeviceAllow=/dev/kvm rw
 DeviceAllow=/dev/net/tun rw

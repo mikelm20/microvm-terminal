@@ -1,13 +1,17 @@
 # proxy
 
-Platform-owned Anthropic proxy. Every microVM's Claude Code talks to this
-service on `:8443` with an opaque session token. The proxy looks up the
-backing Anthropic API key, enforces per-session quota, streams the response
-back unchanged, and writes an audit row to Postgres.
+Optional Anthropic proxy. When deployed, a microVM's Claude Code talks to
+this service on `:8443` (the bridge address, `172.20.0.1`) with an opaque
+session token. The proxy looks up the backing Anthropic API key, enforces
+per-session quota, streams the response back unchanged, and writes an audit
+row to Postgres.
 
-See `../CONTRACTS.md` section 8 (Agent-Gate) for the contract. See
-`../infra/doppler-setup.md` for the secrets this binary reads from the
-environment.
+The default deployment does not use it: every VM carries the shared OAuth
+token written at rootfs prep and talks to `api.anthropic.com` directly. The
+control plane has no proxy wiring yet; deploying the proxy means minting a
+session token per VM and pointing Claude Code at it inside the guest. The
+code and tests are here because the quota and audit path is real and
+rehearsed by `infra/gate-smoke.sh`.
 
 ## Endpoints
 
@@ -20,10 +24,12 @@ environment.
 
 ## Environment variables
 
-Consumed via `doppler run -- claude-proxy`:
+Read from the process environment (`/etc/microvm-terminal/proxy.env` under
+systemd):
 
-- `ANTHROPIC_API_KEYS` (required) - JSON array. See
-  `../infra/doppler-setup.md` for shape.
+- `ANTHROPIC_API_KEYS` (required) - JSON array of
+  `{"id":"k1","workspace":"prod","secret":"sk-ant-..."}`. Only `id` is ever
+  logged.
 - `POSTGRES_URL` (optional) - if unset, audit uses an in-memory sink and
   records are dropped on restart. Prod must set this.
 - `PROXY_ADMIN_TOKEN` (optional) - if unset, the admin endpoints 404 for
@@ -34,8 +40,6 @@ Consumed via `doppler run -- claude-proxy`:
 
 ```
 cd proxy
-doppler run --config dev -- go run ./cmd/claude-proxy --plain --listen :8443
-# or, without Doppler:
 ANTHROPIC_API_KEYS='[{"id":"k1","workspace":"dev","secret":"sk-ant-FAKE"}]' \
   go run ./cmd/claude-proxy --plain --listen :8443
 ```

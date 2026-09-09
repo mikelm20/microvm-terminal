@@ -1,6 +1,5 @@
-# Local dev stack for learn-platform. Brings up Postgres 16 for the control
-# plane to talk to. The control plane itself is not yet containerized: run it
-# with `go run ./cmd/learn-control-plane` against LEARN_DATABASE_URL.
+# Local dev stack: Postgres 16 for the control plane to talk to. The control
+# plane itself runs on the host with `go run` against DATABASE_URL.
 #
 # Usage:
 #   make dev-up     # start services
@@ -11,63 +10,26 @@
 # Credentials live in `.env.local` at repo root (gitignored). See
 # `.env.local.example` for the expected variables.
 
-name: learn-dev
+name: microvm-dev
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: learn-dev-postgres
+    container_name: microvm-dev-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${LEARN_PG_DB:-learn}
-      POSTGRES_USER: ${LEARN_PG_USER:-learn}
-      POSTGRES_PASSWORD: ${LEARN_PG_PASSWORD:-learn}
+      POSTGRES_DB: ${PG_DB:-microvm}
+      POSTGRES_USER: ${PG_USER:-microvm}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-microvm}
     ports:
-      - "${LEARN_PG_PORT:-5432}:5432"
+      - "${PG_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${LEARN_PG_USER:-learn} -d ${LEARN_PG_DB:-learn}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-microvm} -d ${PG_DB:-microvm}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  # pgAdmin is optional. Uncomment if you want a browser UI at
-  # http://localhost:5050. Login with LEARN_PGADMIN_EMAIL / PASSWORD.
-  #
-  # pgadmin:
-  #   image: dpage/pgadmin4:8
-  #   container_name: learn-dev-pgadmin
-  #   restart: unless-stopped
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: ${LEARN_PGADMIN_EMAIL:-dev@learn.local}
-  #     PGADMIN_DEFAULT_PASSWORD: ${LEARN_PGADMIN_PASSWORD:-learn}
-  #     PGADMIN_CONFIG_SERVER_MODE: "False"
-  #   ports:
-  #     - "5050:80"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   volumes:
-  #     - pgadmin-data:/var/lib/pgadmin
-
-  # Placeholder for the control plane. Agent-API wires this up once the Go
-  # service has a working Dockerfile. Until then, run it with `go run` on the
-  # host against the Postgres instance above.
-  #
-  # control-plane:
-  #   build: ../control-plane
-  #   container_name: learn-dev-cp
-  #   restart: unless-stopped
-  #   environment:
-  #     LEARN_DATABASE_URL: postgres://${LEARN_PG_USER:-learn}:${LEARN_PG_PASSWORD:-learn}@postgres:5432/${LEARN_PG_DB:-learn}?sslmode=disable
-  #     LEARN_BIND: "0.0.0.0:8080"
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-
 volumes:
   postgres-data:
-  # pgadmin-data:

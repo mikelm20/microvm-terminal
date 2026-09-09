@@ -28,7 +28,7 @@ func newFakeAnthropic(t *testing.T, body string, status int, isStream bool) *htt
 			t.Errorf("upstream did not receive x-api-key")
 		}
 		if strings.Contains(r.Header.Get("Authorization"), "Bearer") {
-			t.Errorf("upstream saw the learner bearer token; must be stripped")
+			t.Errorf("upstream saw the session bearer token; must be stripped")
 		}
 		if isStream {
 			w.Header().Set("Content-Type", "text/event-stream")
@@ -59,7 +59,7 @@ func newFakeAnthropic(t *testing.T, body string, status int, isStream bool) *htt
 func newProxy(t *testing.T, upstream string) (*httptest.Server, *audit.InMemorySink, *quota.Manager, *keys.Pool) {
 	t.Helper()
 	sink := audit.NewInMemorySink()
-	pool := keys.New([]keys.Key{{ID: "k1", Workspace: "learn-dev", Secret: "sk-ant-fake"}})
+	pool := keys.New([]keys.Key{{ID: "k1", Workspace: "dev", Secret: "sk-ant-fake"}})
 	qm := quota.New(quota.Limits{
 		MaxTokensIn:          10_000,
 		MaxTokensOut:         20_000,
@@ -256,7 +256,7 @@ func TestAdminRotateDrainsThenSwaps(t *testing.T) {
 		}()
 	}
 
-	newKeys := []keys.Key{{ID: "k2", Workspace: "learn-dev", Secret: "sk-ant-rotated"}}
+	newKeys := []keys.Key{{ID: "k2", Workspace: "dev", Secret: "sk-ant-rotated"}}
 	body, _ := json.Marshal(newKeys)
 	req, _ := http.NewRequest(http.MethodPost, proxy.URL+"/admin/rotate", bytes.NewReader(body))
 	req.Header.Set("Authorization", "Bearer admin-secret")

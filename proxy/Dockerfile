@@ -1,6 +1,5 @@
-# Multi-stage build for claude-proxy. Produces a ~15 MB statically-linked
-# binary running as non-root on scratch. Used by infra/docker-compose.gate.yml
-# and, later, by bootstrap.sh for the prod host (`go install` path).
+# Multi-stage build for claude-proxy. Produces a small statically-linked
+# binary running as non-root. Used by infra/docker-compose.gate.yml.
 
 FROM golang:1.25-alpine AS build
 WORKDIR /src
@@ -15,8 +14,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
 
 FROM alpine:3.20 AS runtime
 RUN apk add --no-cache ca-certificates && \
-    addgroup -S learn && adduser -S -G learn -u 10001 learn
+    addgroup -S proxy && adduser -S -G proxy -u 10001 proxy
 COPY --from=build /out/claude-proxy /usr/local/bin/claude-proxy
-USER learn
+USER proxy
 EXPOSE 8443
 ENTRYPOINT ["/usr/local/bin/claude-proxy"]

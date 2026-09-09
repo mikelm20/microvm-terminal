@@ -1,0 +1,9 @@
+[Unit]
+Description=Refresh DNS-backed nftables sets (api.anthropic.com, apt mirrors)
+After=microvm-nftables.service network-online.target
+Requires=microvm-nftables.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/microvm-terminal/refresh-sets.sh
+Nice=10

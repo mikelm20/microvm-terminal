@@ -22,11 +22,11 @@ type Limits struct {
 	MaxRequestsPerMinute int64
 }
 
-// DefaultLimits is the baseline enforcement for a single-learner sandbox. Keep
-// it generous enough to finish every module without bumping the cap, tight
-// enough that a looped bash `while true; do claude --print ...` cannot torch
-// the budget. Tuned against module 2 where the wordiest learner path needed
-// ~14k input tokens + ~22k output tokens across 9 messages.
+// DefaultLimits is the baseline enforcement for a single sandbox session.
+// Generous enough for a working session, tight enough that a looped bash
+// `while true; do claude --print ...` cannot torch the budget. Tuned against
+// sessions that needed ~14k input tokens + ~22k output tokens across 9
+// messages.
 var DefaultLimits = Limits{
 	MaxTokensIn:          60000,
 	MaxTokensOut:         120000,

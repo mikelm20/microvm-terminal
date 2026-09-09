@@ -1,9 +1,9 @@
 #!/usr/sbin/nft -f
 #
-# learn.rules - egress allowlist for the VM bridge.
+# microvm.rules - egress allowlist for the VM bridge.
 #
-# Loaded at boot by learn-nftables.service, which runs
-# `nft -f /etc/learn-platform/nftables/learn.rules`. Reloads are safe: this
+# Loaded at boot by microvm-nftables.service, which runs
+# `nft -f /etc/microvm-terminal/nftables/microvm.rules`. Reloads are safe: this
 # file flushes its own table atomically and rebuilds it, leaving other tables
 # (ufw, docker) untouched.
 #
@@ -11,24 +11,24 @@
 #   1. Any packet leaving the VM bridge (br = fc-br0) is evaluated.
 #   2. DNS to 1.1.1.1 or 8.8.8.8 (udp+tcp/53) is allowed.
 #   3. TLS (tcp/443) to a short allowlist of destination IPs is allowed.
-#   4. TLS (tcp/8443) to the host proxy (100.64.0.1) is allowed.
+#   4. TLS (tcp/8443) to the host-side proxy (bridge address 172.20.0.1) is allowed.
 #   5. Every other packet egressing the bridge is logged (rate-limited) and
 #      dropped. VM-to-VM chatter on the same subnet is also dropped.
 #
 # Allowlist strategy: we resolve the FQDNs to IPs at bootstrap time and write
-# them into the `anthropic_v4` and `apt_v4` sets. The bootstrap script refreshes
-# these sets nightly via the systemd timer (`learn-nftables-refresh.timer`).
+# them into the `anthropic_v4` and `apt_v4` sets. A systemd timer refreshes
+# these sets nightly (`microvm-nftables-refresh.timer`).
 # That keeps the data plane in nftables (fast, deterministic) while letting
 # us update IPs without rewriting the rules.
 
 # Fresh table every reload so we never pile up duplicate rules.
-table inet learn {
+table inet microvm {
   # Populated by bootstrap via `nft add element`. Empty at first load is OK;
   # the set exists, the rules work (they just match nothing until populated).
 
   set anthropic_v4 {
     type ipv4_addr
-    comment "api.anthropic.com A records; refreshed by learn-nftables-refresh.service"
+    comment "api.anthropic.com A records; refreshed by microvm-nftables-refresh.service"
   }
 
   set apt_v4 {
@@ -36,16 +36,16 @@ table inet learn {
     comment "archive.ubuntu.com, security.ubuntu.com, deb.debian.org; refreshed nightly"
   }
 
-  set learn_proxy_v4 {
+  set proxy_v4 {
     type ipv4_addr
-    comment "host-side claude-proxy address reachable from VMs (default 100.64.0.1)"
-    elements = { 100.64.0.1 }
+    comment "host-side claude-proxy address reachable from VMs (the bridge address)"
+    elements = { 172.20.0.1 }
   }
 
   set vm_subnet_v4 {
     type ipv4_addr
     flags interval
-    comment "CIDR of the VM bridge; any IP in here is another learner VM"
+    comment "CIDR of the VM bridge; any IP in here is another VM"
     elements = { 172.20.0.0/24 }
   }
 
@@ -72,28 +72,28 @@ table inet learn {
     ct state established,related accept
 
     # Drop VM-to-VM traffic even if both share fc-br0. Lateral movement
-    # between learner VMs is never a legitimate path.
+    # between VMs is never a legitimate path.
     ip daddr @vm_subnet_v4 counter drop
 
     # DNS to Cloudflare and Google; anything else is dropped.
     ip daddr { 1.1.1.1, 8.8.8.8 } udp dport 53 accept
     ip daddr { 1.1.1.1, 8.8.8.8 } tcp dport 53 accept
 
-    # TLS to the host-side Platform proxy (route of record for Claude calls).
-    ip daddr @learn_proxy_v4 tcp dport 8443 accept
+    # TLS to the host-side proxy, when the optional proxy is deployed.
+    ip daddr @proxy_v4 tcp dport 8443 accept
 
-    # Legacy direct path: if the proxy is unavailable and ops flips a flag,
-    # VMs can still hit api.anthropic.com. Kept off by default (set is empty
-    # until learn-nftables-refresh fills it AND ops toggles allow_direct).
+    # Direct path to api.anthropic.com. This is what the default deployment
+    # uses: every VM carries the shared OAuth token and talks to Anthropic
+    # itself. The set is filled by microvm-nftables-refresh.service.
     ip daddr @anthropic_v4 tcp dport 443 accept
 
-    # Apt mirrors (image builds run inside VMs fetching tarballs during
-    # lesson setup). Narrow list; any other 443 traffic is dropped.
+    # Apt mirrors so `apt-get install` works inside a VM. Narrow list; any
+    # other 443 traffic is dropped.
     ip daddr @apt_v4 tcp dport 443 accept
 
     # Everything else: log at 5/s then drop. Log goes to journald via kernel;
-    # grep `LEARN_DROP` on learn-01 to see attempted paths.
-    limit rate 5/second log prefix "LEARN_DROP " flags all
+    # grep `MICROVM_DROP` on the host to see attempted paths.
+    limit rate 5/second log prefix "MICROVM_DROP " flags all
     counter drop
   }
 
@@ -107,12 +107,12 @@ table inet learn {
 }
 
 # Loading notes:
-#   sudo install -m 0644 infra/nftables/learn.rules /etc/learn-platform/nftables/
-#   sudo systemctl enable --now learn-nftables.service
+#   sudo install -m 0644 infra/nftables/microvm.rules /etc/microvm-terminal/nftables/
+#   sudo systemctl enable --now microvm-nftables.service
 #
 # To refresh the dynamic sets at any time:
-#   sudo systemctl start learn-nftables-refresh.service
+#   sudo systemctl start microvm-nftables-refresh.service
 #
 # To inspect:
-#   sudo nft list table inet learn
-#   sudo nft list set inet learn anthropic_v4
+#   sudo nft list table inet microvm
+#   sudo nft list set inet microvm anthropic_v4

@@ -1,0 +1,13 @@
+[Unit]
+Description=Nightly refresh of microvm-terminal nftables sets
+Requires=microvm-nftables-refresh.service
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+# Drift so a fleet does not hit the resolver at the same minute.
+RandomizedDelaySec=600
+Persistent=true
+Unit=microvm-nftables-refresh.service
+
+[Install]
+WantedBy=timers.target

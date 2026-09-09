@@ -1,28 +1,24 @@
-# Gate-local dev stack. This file is owned by Agent-Gate and tests the
-# security gate end to end: proxy + nftables-like container policy + an
-# Anthropic mock + a VM simulator. Agent-Tooling ships the canonical
-# `docker-compose.dev.yml` separately; at merge time the two stacks are
-# reconciled into one. Until then, run `docker compose -f infra/docker-compose.gate.yml up`
-# from the repo root.
+# Proxy rehearsal stack: the optional Anthropic proxy + an nftables-like
+# container policy + an Anthropic mock + a VM simulator. Run with
+# `infra/gate-smoke.sh` from the repo root.
 #
 # Why docker and not the real Firecracker path?
-#   - We run this on macOS laptops; Firecracker needs KVM which is Linux-only.
-#   - The jailer.sh script is tested against a real Firecracker on the
-#     production host (manual smoke; see infra/jailer/README.md).
+#   - It runs on macOS laptops; Firecracker needs KVM which is Linux-only.
+#   - jailer.sh is exercised by `make integration-vm` on a real host.
 #   - What this stack tests: HTTP surface of the proxy, quota, audit to
-#     Postgres, TLS termination, and the allowlist behaviour of vm-sim.
+#     Postgres, and the allowlist behaviour of vm-sim.
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: learn
-      POSTGRES_PASSWORD: learn
-      POSTGRES_DB: learn
+      POSTGRES_USER: microvm
+      POSTGRES_PASSWORD: microvm
+      POSTGRES_DB: microvm
     ports:
       - "15432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U learn -d learn"]
+      test: ["CMD-SHELL", "pg_isready -U microvm -d microvm"]
       interval: 2s
       timeout: 2s
       retries: 15
@@ -48,10 +44,10 @@ services:
       dockerfile: Dockerfile
     environment:
       ANTHROPIC_API_KEYS: |
-        [{"id":"dev-k1","workspace":"learn-dev","secret":"sk-ant-fake-DEV-DO-NOT-USE"}]
-      POSTGRES_URL: postgres://learn:learn@postgres:5432/learn?sslmode=disable
-      # Placeholder, never a real secret. Real admin token comes from Doppler
-      # (config=prd) and is injected by `doppler run -- claude-proxy`.
+        [{"id":"dev-k1","workspace":"dev","secret":"sk-ant-fake-DEV-DO-NOT-USE"}]
+      POSTGRES_URL: postgres://microvm:microvm@postgres:5432/microvm?sslmode=disable
+      # Placeholder, never a real secret. The real admin token lives in
+      # /etc/microvm-terminal/proxy.env on the host.
       PROXY_ADMIN_TOKEN: CHANGEME_LOCAL_DEV_ONLY
       PROXY_UPSTREAM: http://fake-anthropic:8080
     command:

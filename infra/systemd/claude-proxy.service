@@ -1,24 +1,20 @@
 [Unit]
-Description=Platform-owned Anthropic proxy (per-session quota + audit)
-Documentation=https://github.com/mikelm20/learn-platform/tree/main/proxy
+Description=Anthropic API proxy with per-session quota and audit (optional)
+Documentation=https://github.com/mikelm20/microvm-terminal/tree/main/proxy
 After=network-online.target postgresql.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=learn
-Group=learn
-# Doppler is the source of truth for secrets. `doppler run` injects
-# ANTHROPIC_API_KEYS, POSTGRES_URL, PROXY_ADMIN_TOKEN, PROXY_TLS_CERT_FILE,
-# PROXY_TLS_KEY_FILE into the process environment and execs our binary.
-# The config name (dev/stg/prd) is locked via `doppler setup`, stored in
-# /etc/learn-platform/doppler.yaml at the service account level.
-ExecStart=/usr/bin/doppler run --config ${DOPPLER_CONFIG} --project learn-platform -- \
-  /usr/local/bin/claude-proxy \
+User=microvm
+Group=microvm
+# ANTHROPIC_API_KEYS, POSTGRES_URL, PROXY_ADMIN_TOKEN, PROXY_TLS_CERT_FILE and
+# PROXY_TLS_KEY_FILE come from this file (mode 0600, owner root:microvm 0640).
+EnvironmentFile=/etc/microvm-terminal/proxy.env
+ExecStart=/usr/local/bin/claude-proxy \
   --listen :8443 \
   --upstream https://api.anthropic.com
-Environment=DOPPLER_CONFIG=prd
-Environment=HOME=/var/lib/learn-platform
+Environment=HOME=/var/lib/microvm-terminal
 Restart=always
 RestartSec=2s
 StartLimitBurst=20
@@ -42,11 +38,9 @@ SystemCallArchitectures=native
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 
-# Listen on :8443 from the VM bridge (100.64.0.1). Route binding is via
-# IPv4, so bind to 0.0.0.0 is required; ufw + nftables ensure this is only
-# reachable from the internal bridge, not from the internet.
+# Listens on :8443. VMs reach it at the bridge address (172.20.0.1); ufw and
+# nftables keep it off the public interface.
 
-# Writing only to journald.
 StandardOutput=journal
 StandardError=journal
 

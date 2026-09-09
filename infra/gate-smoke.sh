@@ -22,7 +22,7 @@ COMPOSE="docker compose -f infra/docker-compose.gate.yml"
 # PROXY_ADMIN_TOKEN is a stable placeholder matching the value baked into
 # docker-compose.gate.yml's claude-proxy service. Both are meant to be
 # overridden at run time (PROXY_ADMIN_TOKEN=... infra/gate-smoke.sh) when
-# testing against a doppler-fed proxy. Never a real production value.
+# testing against a deployed proxy. Never a real production value.
 : "${PROXY_ADMIN_TOKEN:=CHANGEME_LOCAL_DEV_ONLY}"
 export PROXY_ADMIN_TOKEN
 
@@ -31,7 +31,7 @@ up() {
   $COMPOSE up -d --build
   # Give the proxy a moment to complete its Postgres migration.
   for i in $(seq 1 30); do
-    if $COMPOSE exec -T postgres pg_isready -U learn -d learn >/dev/null 2>&1; then
+    if $COMPOSE exec -T postgres pg_isready -U microvm -d microvm >/dev/null 2>&1; then
       if curl -sf http://127.0.0.1:18443/healthz >/dev/null; then
         echo "[gate-smoke] proxy healthy"
         return 0
@@ -106,7 +106,7 @@ run_tests() {
 
   echo "[gate-smoke] 5/5 proxy_audit_log has rows"
   local rows
-  rows="$($COMPOSE exec -T postgres psql -U learn -d learn -Atqc 'select count(*) from proxy_audit_log' 2>/dev/null || echo 0)"
+  rows="$($COMPOSE exec -T postgres psql -U microvm -d microvm -Atqc 'select count(*) from proxy_audit_log' 2>/dev/null || echo 0)"
   if [ -z "$rows" ] || [ "$rows" -lt 1 ]; then
     echo "FAIL: proxy_audit_log empty (rows=$rows)" >&2
     exit 1

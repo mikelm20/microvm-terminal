@@ -39,9 +39,9 @@ type Config struct {
 	Quota *quota.Manager
 	// Audit receives one Record per forwarded request. Writes happen on a
 	// best-effort async goroutine so slow database writes never stall a
-	// learner's stream. A failure is logged, never fatal.
+	// user's stream. A failure is logged, never fatal.
 	Audit audit.Sink
-	// AdminToken gates POST /admin/rotate. Loaded from Doppler
+	// AdminToken gates POST /admin/rotate. Loaded from the environment
 	// (PROXY_ADMIN_TOKEN). Empty string disables the endpoint (tests).
 	AdminToken string
 	// HTTPClient is used to talk to the upstream. Tests inject a fake that
@@ -85,7 +85,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{
 			// Long enough for slow streaming responses but not infinite. A
-			// learner who idles for 10 minutes mid-turn is dead.
+			// session that idles for 10 minutes mid-turn is dead.
 			Timeout: 10 * time.Minute,
 		}
 	}
@@ -181,8 +181,7 @@ func (s *Server) handleForward(w http.ResponseWriter, r *http.Request) {
 
 	// Snapshot the request body so we can size it for audit even when the
 	// upstream response indicates a hard failure. Keep memory bounded: 1 MiB
-	// is far more than any learner prompt will ever be, and the Composer
-	// caps input at 4096 chars anyway.
+	// is far more than any interactive prompt will ever be.
 	var reqBody bytes.Buffer
 	if r.Body != nil {
 		defer r.Body.Close()

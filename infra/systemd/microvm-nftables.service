@@ -1,0 +1,22 @@
+[Unit]
+Description=Load microvm-terminal nftables egress allowlist
+Documentation=https://github.com/mikelm20/microvm-terminal/blob/main/infra/nftables/microvm.rules
+# Must be loaded before the control plane starts any VM, otherwise the
+# first few seconds of a VM life have unrestricted egress.
+Before=microvm-terminal.service
+After=network-pre.target
+Wants=network-pre.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+# Load the rules then fill the dynamic sets. Both are idempotent.
+ExecStart=/usr/sbin/nft -f /etc/microvm-terminal/nftables/microvm.rules
+ExecStartPost=/usr/local/libexec/microvm-terminal/refresh-sets.sh
+RemainAfterExit=yes
+
+# On stop we remove the whole table so the host goes back to a clean slate.
+ExecStop=/usr/sbin/nft delete table inet microvm
+
+[Install]
+WantedBy=multi-user.target

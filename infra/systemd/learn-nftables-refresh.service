@@ -1,9 +1,0 @@
-[Unit]
-Description=Refresh DNS-backed nftables sets (api.anthropic.com, apt mirrors)
-After=learn-nftables.service network-online.target
-Requires=learn-nftables.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/libexec/learn-platform/refresh-sets.sh
-Nice=10
