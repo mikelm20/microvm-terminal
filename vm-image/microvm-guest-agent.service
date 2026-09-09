@@ -1,14 +1,14 @@
 [Unit]
-Description=learn-platform guest agent (vsock event emitter)
+Description=microvm-terminal guest agent (vsock readiness + terminal resize)
 After=network-online.target multi-user.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/learn-guest-agent
+ExecStart=/usr/local/bin/microvm-guest-agent
 Restart=on-failure
 RestartSec=2s
-# Needs read access to /proc for the process/port watchers; runs as root for simplicity.
+# Root so it can open /dev/ttyS0 for TIOCSWINSZ.
 StandardOutput=journal
 StandardError=journal
 

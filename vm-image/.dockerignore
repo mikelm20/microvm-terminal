@@ -3,4 +3,4 @@ out/
 *.img
 vmlinux*
 .git
-# Don't ignore learn-guest-agent: it must be in the build context
+# microvm-guest-agent must stay in the build context.

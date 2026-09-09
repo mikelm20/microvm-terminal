@@ -1,42 +1,34 @@
 # vm-image
 
-Reproducible Firecracker guest image: Ubuntu 24.04 + Claude Code + Node.
+Reproducible Firecracker guest image: Ubuntu 24.04 + Node 22 + Claude Code + the guest agent.
 
 ## Build
 
-On the learn-01 host (x86_64 Linux with Docker):
+On the Linux x86_64 host (Docker, root):
 
 ```
-cd ~/learn-platform/vm-image
+cd vm-image
 sudo make all
 ```
 
 Artifacts land in `$OUT_DIR` (default `/var/lib/firecracker/images`):
-- `rootfs.ext4` - 4 GiB ext4 filesystem image, the VM's `/`
-- `vmlinux-<version>` and `vmlinux` (symlink to the current pin)
 
-## Version bumps
+- `rootfs.ext4`: 4 GiB ext4 image, the VM's `/`
+- `vmlinux-<version>` and `vmlinux` (symlink to the pinned version)
 
-Edit the `Makefile` or override at invocation:
-```
-sudo KERNEL_VERSION=6.1.160 make kernel
-```
+Bump versions in the `Makefile` or at invocation: `sudo KERNEL_VERSION=6.1.160 make kernel`.
 
 ## What the rootfs contains
 
-- Ubuntu 24.04 userland (apt upgrade -y at build time)
-- systemd as PID 1 (serial getty auto-logs in as `learner`)
-- Node 22 LTS via NodeSource
-- Claude Code (`@anthropic-ai/claude-code` npm global)
-- `learner` user with passwordless sudo (MVP sandbox only)
-- Standard dev tools: git, vim, tmux, htop, python3, build-essential
+- Ubuntu 24.04 userland, systemd as PID 1
+- `agetty --autologin dev` on `ttyS0`, so the serial console lands in the menu
+- `dev` user (uid 1001), login shell `guest-shell` (`guest-shell.sh`), no sudo except `poweroff`
+- Node 22 and `@anthropic-ai/claude-code`
+- `microvm-guest-agent`: vsock hello for readiness, `TIOCSWINSZ` on `/dev/ttyS0` for resize
+- git, vim, tmux, python3, build-essential
 
 ## Not in the rootfs
 
-- No kernel (Firecracker supplies it)
-- No Claude OAuth token (injected at boot by the control plane or guest agent)
-- No SSH server (you talk to the VM via the Firecracker serial console / vsock, not via network SSH)
-
-## Phase 0 caveat
-
-Serial auto-login as `learner` is a MVP convenience so the host PTY reader ends up in a shell immediately. When the guest agent lands (Phase 2-3), the serial getty will be disabled and PTY access will go through the agent, not auto-login.
+- The kernel (Firecracker supplies it)
+- The Claude OAuth token, the per-VM hostname and IP (written by the control plane at rootfs prep, see `control-plane/internal/firecracker/rootfs.go`)
+- An SSH server (the VM is reached only through the serial console and vsock)

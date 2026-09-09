@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 #
 # Build the VM rootfs as an ext4 image suitable for Firecracker.
-# Runs on Linux x86_64 (the learn-01 host). Requires Docker + root (for losetup + mount).
+# Runs on Linux x86_64. Requires Docker + root (for losetup + mount).
 #
 #   Usage: sudo OUT_DIR=/var/lib/firecracker/images bash build-rootfs.sh
 #
 # Output: ${OUT_DIR}/rootfs.ext4
 set -euo pipefail
 
-IMAGE_TAG="${IMAGE_TAG:-learn-vm-rootfs:latest}"
+IMAGE_TAG="${IMAGE_TAG:-microvm-rootfs:latest}"
 OUT_DIR="${OUT_DIR:-./out}"
-ROOTFS_SIZE_MB="${ROOTFS_SIZE_MB:-4096}"   # 4 GiB: Node + Claude Code + learner workspace
+ROOTFS_SIZE_MB="${ROOTFS_SIZE_MB:-4096}"   # 4 GiB: Node + Claude Code + workspace
 
 log() { printf '\n\033[1;34m[build-rootfs]\033[0m %s\n' "$*"; }
 
@@ -38,7 +38,7 @@ if [ ! -x "${tmp_root}/sbin/init" ] && [ ! -L "${tmp_root}/sbin/init" ]; then
 fi
 
 # Docker export leaves / with mode 0700, which breaks any non-root service
-# (systemd-network, systemd-resolved, the learner shell) because they can't
+# (systemd-network, systemd-resolved, the guest shell) because they can't
 # traverse /. Restore the standard 0755.
 chmod 0755 "${tmp_root}"
 
