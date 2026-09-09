@@ -165,9 +165,9 @@ Make targets: `help`, `dev-up`, `dev-down`, `dev-restart`, `dev-logs`, `dev-ps`,
 
 Host provisioning is `infra/bootstrap.sh`: idempotent, root-only, pins Firecracker v1.10.1, Go 1.25.0 and Node 22, verifies KVM, formats the data disk, installs jailer, seccomp profile, nftables rules, Caddy and the systemd units.
 
-## Public copy
+## Placeholders
 
-Host addresses, SSH details, hardware fingerprint, client and contact names, internal document paths and internal hostnames were replaced with placeholders such as `<host-ip>` across the full history. Author identities were mapped to one address. The commit graph is unchanged. No credential was ever committed; gitleaks runs in CI and reports clean across all history.
+Host addresses, SSH details, hardware identifiers, contact names and internal document paths in this repository are placeholders such as `<host-ip>`, `<ssh-key-path>` and `<drive-link>`. Substitute your own when deploying.
 
 ## License
 
