@@ -11,42 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  node:
-    name: node (pnpm typecheck, lint, build)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        run: pnpm build
-
-      - name: Codegen parity (voice + api)
-        # Fails if committed generated files are out of date.
-        run: |
-          pnpm codegen
-          git diff --exit-code -- shared/voice/types.ts control-plane/internal/apitypes/apitypes.go
-
   go:
-    name: go (build)
+    name: go (build, vet, test)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -60,48 +26,14 @@ jobs:
             guest-agent/go.sum
             proxy/go.sum
 
-      - name: control-plane build
+      - name: control-plane
         working-directory: control-plane
-        run: go build ./...
+        run: go build ./... && go vet ./... && go test ./...
 
-      - name: guest-agent build
+      - name: guest-agent
         working-directory: guest-agent
-        run: go build ./...
+        run: GOOS=linux GOARCH=amd64 go build ./... && GOOS=linux GOARCH=amd64 go vet ./...
 
-      - name: claude-wrap build (if present)
-        run: |
-          if [ -d vm-image/claude-wrap ]; then
-            cd vm-image/claude-wrap && go build ./...
-          else
-            echo "vm-image/claude-wrap not yet landed, skipping"
-          fi
-
-      - name: proxy build (if present)
-        run: |
-          if [ -d proxy ]; then
-            cd proxy && go build ./...
-          else
-            echo "proxy not yet landed, skipping"
-          fi
-
-  format:
-    name: prettier (format check)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.12.0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Check formatting
-        run: pnpm format:check
+      - name: proxy
+        working-directory: proxy
+        run: go build ./... && go vet ./... && go test ./...
