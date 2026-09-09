@@ -137,14 +137,17 @@ export const SessionClosedEvent = BaseEvent.extend({
 // the mini-app files and the guest-agent responds to a list request. Lets
 // the frontend show a real "Explore" sidebar so the learner sees actual code,
 // not a black box.
+export const FilesSnapshotFile = z.object({
+  path: z.string(),
+  content: z.string(),
+  size_bytes: z.number().int(),
+});
+export type FilesSnapshotFile = z.infer<typeof FilesSnapshotFile>;
+
 export const FilesSnapshotEvent = BaseEvent.extend({
   type: z.literal("files_snapshot"),
   root: z.string(),
-  files: z.array(z.object({
-    path: z.string(),
-    content: z.string(),
-    size_bytes: z.number().int(),
-  })),
+  files: z.array(FilesSnapshotFile),
 });
 
 export const WsEvent = z.discriminatedUnion("type", [

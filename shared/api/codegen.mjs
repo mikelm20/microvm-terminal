@@ -48,6 +48,10 @@ const apiExports = [
   ["AttachImageResponse", "AttachImageResponse"],
   ["PublicProfileResponse", "PublicProfileResponse"],
   ["PublicCertificateResponse", "PublicCertificateResponse"],
+  ["CapstoneValidateRequest", "CapstoneValidateRequest"],
+  ["CapstoneValidateResponse", "CapstoneValidateResponse"],
+  ["CapstoneBuildRequest", "CapstoneBuildRequest"],
+  ["CapstoneBuildResponse", "CapstoneBuildResponse"],
 ];
 
 const eventExports = [
@@ -70,6 +74,10 @@ const eventExports = [
   ["StepSatisfiedEvent", "StepSatisfiedEvent"],
   ["SessionErrorEvent", "SessionErrorEvent"],
   ["SessionClosedEvent", "SessionClosedEvent"],
+  // FilesSnapshotFile is listed before FilesSnapshotEvent so the nested array
+  // item reuses the named struct instead of a synthesized *FilesItem name.
+  ["FilesSnapshotFile", "FilesSnapshotFile"],
+  ["FilesSnapshotEvent", "FilesSnapshotEvent"],
 ];
 
 const errorExports = [["ApiError", "ApiError"]];
@@ -307,6 +315,7 @@ const (
 \tWsEventStepSatisfied      WsEventType = "step_satisfied"
 \tWsEventSessionError       WsEventType = "session_error"
 \tWsEventSessionClosed      WsEventType = "session_closed"
+\tWsEventFilesSnapshot      WsEventType = "files_snapshot"
 )
 
 // ApiErrorCode enumerates every known control-plane error code. Mirrors the
