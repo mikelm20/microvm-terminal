@@ -782,7 +782,6 @@ The marketing/proof/certificate web lives in a separate repo (`learn-landing`) o
 
 - **Branches**: one branch per agent, named as in task descriptions (`contracts/scaffold`, `spine/predicates`, `api/endpoints`, `gate/security`, `web/proof`).
 - **Commits**: imperative, <=72 chars first line, body wraps at 80. Reference issue IDs (#11, #12, #13, #14, #15) when a commit closes part of an issue.
-
 - **PRs**: none during the 2-day sprint. Merge is manual at the end. Each agent pushes their branch, leader (me) merges.
 - **Secrets**: never committed. Use Doppler (post Agent-Gate setup) or `.env.local` (git-ignored) for dev. No secret ever in `infra/bootstrap.sh` or systemd units.
 - **Code comments**: minimal. Only for non-obvious "why". No "fixed X on date Y" comments; use git log.

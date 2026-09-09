@@ -114,11 +114,10 @@ Limits as configured:
 
 ## How it was built
 
-- 46 commits between 2026-04-18 and 2026-04-22, about 4.5 calendar days. 27k lines across 278 tracked files, excluding lockfiles and fixtures.
-
-- `CONTRACTS.md` freezes every cross-package interface and, in section 8, assigns each Claude agent a scope, an owned file set and exit criteria. Source files carry ownership notes such as `Agent-Tooling owns this file. Other agents read, do not write.` Agents that hit an ambiguous contract were told to open a `contracts-question` issue and wait.
-- The merge history is a series of scoped agent branches: `gate/real-launcher`, `spine/predicates`, `api/endpoints`, `gate/security`, `web/scaffold`, `content/f2-lessons`, `tooling/scaffold`.
-- `CLAUDE.md` is the agent guide. The `.claude/` directory was never committed; coordination lives entirely in those two files.
+- 46 commits between 2026-04-18 and 2026-04-22. 27k lines across 278 tracked files, excluding lockfiles and fixtures.
+- `CONTRACTS.md` freezes every cross-package interface and, in section 8, splits the work into scoped tracks, each with an owned file set and exit criteria. Files such as the `Makefile` carry an ownership note naming the track that owns them. An ambiguous contract was resolved by opening a `contracts-question` issue before continuing.
+- The merge history is a series of scoped branches: `gate/real-launcher`, `spine/predicates`, `api/endpoints`, `gate/security`, `web/scaffold`, `content/f2-lessons`, `tooling/scaffold`.
+- `CLAUDE.md` holds the working conventions: pinned versions, codegen rules, style. Coordination lives entirely in those two files.
 - Two bug-fix commits were added on 2026-09-09 while preparing this public copy (see Known gaps).
 
 ## Known gaps
@@ -168,7 +167,7 @@ Host provisioning is `infra/bootstrap.sh`: idempotent, root-only, pins Firecrack
 
 ## Public copy
 
-Host addresses, SSH details, hardware fingerprint, client and contact names, internal document paths and internal hostnames were replaced with placeholders such as `<host-ip>` across the full history. No credential was ever committed; gitleaks runs in CI and reports clean across all history.
+Host addresses, SSH details, hardware fingerprint, client and contact names, internal document paths and internal hostnames were replaced with placeholders such as `<host-ip>` across the full history. Author identities were mapped to one address. The commit graph is unchanged. No credential was ever committed; gitleaks runs in CI and reports clean across all history.
 
 ## License
 
