@@ -109,7 +109,9 @@ function canonical(x) {
   if (x && typeof x === "object") {
     const out = {};
     const skip = new Set(["$schema", "description", "title"]);
-    const keys = Object.keys(x).filter((k) => !skip.has(k)).sort();
+    const keys = Object.keys(x)
+      .filter((k) => !skip.has(k))
+      .sort();
     for (const k of keys) out[k] = canonical(x[k]);
     return out;
   }

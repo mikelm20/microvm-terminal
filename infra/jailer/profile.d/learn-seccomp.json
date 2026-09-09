@@ -3,22 +3,83 @@
   "defaultAction": "SCMP_ACT_ERRNO",
   "architectures": ["SCMP_ARCH_X86_64"],
   "syscalls": [
-    {"names": ["read", "readv", "pread64"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["write", "writev", "pwrite64"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["close", "fstat", "newfstatat", "lseek"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["mmap", "mprotect", "munmap", "brk", "madvise", "mincore", "mremap"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["rt_sigaction", "rt_sigprocmask", "rt_sigreturn", "rt_sigsuspend", "sigaltstack"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["ioctl"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["pselect6", "ppoll", "poll", "select", "epoll_create1", "epoll_ctl", "epoll_wait", "epoll_pwait"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["futex", "get_robust_list", "set_robust_list"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["clock_gettime", "clock_getres", "clock_nanosleep", "nanosleep", "gettimeofday", "time"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["getpid", "gettid", "getuid", "geteuid", "getgid", "getegid", "getrandom", "getcwd"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["exit", "exit_group", "tgkill", "kill", "prctl", "arch_prctl"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["sched_getaffinity", "sched_yield"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["openat", "statx", "fsync", "ftruncate"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["eventfd2", "dup", "dup3", "pipe2", "fcntl"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["socket", "connect", "accept4", "bind", "listen", "getsockname", "getpeername", "recvfrom", "sendto", "recvmsg", "sendmsg", "setsockopt", "getsockopt", "shutdown"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["clone", "clone3", "execve", "wait4"], "action": "SCMP_ACT_ALLOW"},
-    {"names": ["membarrier", "restart_syscall"], "action": "SCMP_ACT_ALLOW"}
+    { "names": ["read", "readv", "pread64"], "action": "SCMP_ACT_ALLOW" },
+    { "names": ["write", "writev", "pwrite64"], "action": "SCMP_ACT_ALLOW" },
+    { "names": ["close", "fstat", "newfstatat", "lseek"], "action": "SCMP_ACT_ALLOW" },
+    {
+      "names": ["mmap", "mprotect", "munmap", "brk", "madvise", "mincore", "mremap"],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": ["rt_sigaction", "rt_sigprocmask", "rt_sigreturn", "rt_sigsuspend", "sigaltstack"],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    { "names": ["ioctl"], "action": "SCMP_ACT_ALLOW" },
+    {
+      "names": [
+        "pselect6",
+        "ppoll",
+        "poll",
+        "select",
+        "epoll_create1",
+        "epoll_ctl",
+        "epoll_wait",
+        "epoll_pwait"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    { "names": ["futex", "get_robust_list", "set_robust_list"], "action": "SCMP_ACT_ALLOW" },
+    {
+      "names": [
+        "clock_gettime",
+        "clock_getres",
+        "clock_nanosleep",
+        "nanosleep",
+        "gettimeofday",
+        "time"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": [
+        "getpid",
+        "gettid",
+        "getuid",
+        "geteuid",
+        "getgid",
+        "getegid",
+        "getrandom",
+        "getcwd"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": ["exit", "exit_group", "tgkill", "kill", "prctl", "arch_prctl"],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    { "names": ["sched_getaffinity", "sched_yield"], "action": "SCMP_ACT_ALLOW" },
+    { "names": ["openat", "statx", "fsync", "ftruncate"], "action": "SCMP_ACT_ALLOW" },
+    { "names": ["eventfd2", "dup", "dup3", "pipe2", "fcntl"], "action": "SCMP_ACT_ALLOW" },
+    {
+      "names": [
+        "socket",
+        "connect",
+        "accept4",
+        "bind",
+        "listen",
+        "getsockname",
+        "getpeername",
+        "recvfrom",
+        "sendto",
+        "recvmsg",
+        "sendmsg",
+        "setsockopt",
+        "getsockopt",
+        "shutdown"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    { "names": ["clone", "clone3", "execve", "wait4"], "action": "SCMP_ACT_ALLOW" },
+    { "names": ["membarrier", "restart_syscall"], "action": "SCMP_ACT_ALLOW" }
   ]
 }

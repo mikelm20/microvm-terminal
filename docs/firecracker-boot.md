@@ -52,13 +52,13 @@ session ready                            session=<uuid> boot_ms=3215
 
 Stages in the `GuestEvent` bus, matching `CONTRACTS.md` section 5:
 
-| stage          | meaning                                                              |
-|----------------|----------------------------------------------------------------------|
-| jailer         | jailer script invoked (implicit; no event fires for pass-through)    |
-| kernel         | firecracker child spawned, kernel booting (implicit)                 |
-| rootfs         | per-VM ext4 ready with systemd-networkd + claude creds               |
-| guest_agent    | host-side vsock listener bound, waiting for guest hello              |
-| claude         | claude binary is available inside the VM; covered by the guest agent via process_started |
+| stage       | meaning                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| jailer      | jailer script invoked (implicit; no event fires for pass-through)                        |
+| kernel      | firecracker child spawned, kernel booting (implicit)                                     |
+| rootfs      | per-VM ext4 ready with systemd-networkd + claude creds                                   |
+| guest_agent | host-side vsock listener bound, waiting for guest hello                                  |
+| claude      | claude binary is available inside the VM; covered by the guest agent via process_started |
 
 The explicit session-wide `vm_ready` event fires the moment the guest-agent
 hello frame's `session_token` matches the value baked into the kernel
