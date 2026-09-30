@@ -2,6 +2,8 @@
 
 Open a page, log in, and you are in a terminal running Claude Code inside your own Firecracker microVM. A Go control plane on a KVM host boots one VM per session in about 3 seconds, bridges the VM's serial console to an xterm.js page over WebSocket, and destroys the VM when you close it or leave it idle. Isolation is jailer plus cgroups v2 plus a custom seccomp filter plus an nftables egress allowlist plus a login shell that never reaches bash.
 
+![Architecture](docs/architecture.svg)
+
 Status: the VM layer, the terminal path and the login flow build and pass their tests. The resize path and the idle reaper are covered by unit tests and a real-host integration test, but the rootfs image has not been rebuilt with the new guest agent by the author on a KVM host. See Known limits before assuming anything else.
 
 ## Numbers

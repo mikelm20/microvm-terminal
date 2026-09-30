@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 720" font-family="Inter, -apple-system, Helvetica, sans-serif">
+  <rect width="960" height="720" fill="#FAFAF8"/>
+
+  <!-- Title -->
+  <text x="56" y="62" font-size="22" font-weight="600" fill="#222">microvm-terminal</text>
+  <text x="56" y="88" font-size="13" fill="#888">One Firecracker microVM per user session. Cold boot in about 3 seconds, destroyed on exit or idle.</text>
+
+  <!-- ====== BROWSER ====== -->
+  <rect x="56" y="140" width="150" height="120" rx="10" fill="#fff" stroke="#ddd"/>
+  <text x="80" y="168" font-size="10" font-weight="600" fill="#999" letter-spacing="2">BROWSER</text>
+  <rect x="76" y="184" width="110" height="56" rx="6" fill="#F4F4F4" stroke="#ccc"/>
+  <text x="131" y="208" font-size="12" fill="#555" text-anchor="middle">xterm.js</text>
+  <text x="131" y="226" font-size="11" fill="#999" text-anchor="middle">terminal page</text>
+
+  <line x1="206" y1="200" x2="262" y2="200" stroke="#2F6DB5" stroke-width="2"/>
+  <polygon points="254,194 262,200 254,206" fill="#2F6DB5"/>
+  <polygon points="214,194 206,200 214,206" fill="#2F6DB5"/>
+  <text x="234" y="222" font-size="9" fill="#2F6DB5" text-anchor="middle">WS</text>
+
+  <!-- ====== KVM HOST ====== -->
+  <rect x="262" y="120" width="642" height="570" rx="10" fill="none" stroke="#ccc" stroke-dasharray="6 5"/>
+  <text x="286" y="148" font-size="10" font-weight="600" fill="#999" letter-spacing="2">KVM HOST</text>
+
+  <!-- Control plane -->
+  <rect x="286" y="164" width="594" height="72" rx="8" fill="#EEE8F7" stroke="#7B5CC4"/>
+  <text x="306" y="190" font-size="13" font-weight="600" fill="#4A2F99">Control plane (Go)</text>
+  <text x="306" y="212" font-size="12" fill="#5B4A8F">Login · sessions API · serial console bridge · VM lifecycle · idle reaper · Postgres</text>
+
+  <!-- Isolation stack: nested layers -->
+  <rect x="286" y="256" width="400" height="410" rx="10" fill="#fff" stroke="#ddd"/>
+  <text x="306" y="282" font-size="10" font-weight="600" fill="#999" letter-spacing="2">ONE SESSION</text>
+
+  <rect x="302" y="296" width="368" height="354" rx="8" fill="#FDF7C9" stroke="#C9A800"/>
+  <text x="318" y="316" font-size="11" fill="#8A7300">Jailer: chroot, own PID namespace, unprivileged user</text>
+  <rect x="316" y="326" width="340" height="310" rx="8" fill="#FFF3E3" stroke="#E07B1A"/>
+  <text x="332" y="346" font-size="11" fill="#B85C00">cgroups v2: 2 CPU, 2.3 GiB, 512 processes</text>
+  <rect x="330" y="356" width="312" height="266" rx="8" fill="#F9E1E6" stroke="#C8374E"/>
+  <text x="346" y="376" font-size="11" fill="#A1263A">seccomp: 85 allowed syscalls</text>
+
+  <rect x="344" y="388" width="284" height="220" rx="8" fill="#E3F0FB" stroke="#2F6DB5"/>
+  <text x="360" y="410" font-size="12" font-weight="600" fill="#1E4F8F">Firecracker microVM</text>
+  <text x="360" y="428" font-size="11" fill="#4B6F99">2 vCPU · 2 GiB · fresh copy of a golden image</text>
+  <rect x="360" y="442" width="252" height="34" rx="6" fill="#fff" stroke="#9DBFE3"/>
+  <text x="486" y="464" font-size="12" fill="#1E4F8F" text-anchor="middle">Menu shell, no path to bash</text>
+  <rect x="360" y="486" width="252" height="34" rx="6" fill="#fff" stroke="#9DBFE3"/>
+  <text x="486" y="508" font-size="12" fill="#1E4F8F" text-anchor="middle">Claude Code</text>
+  <rect x="360" y="530" width="252" height="34" rx="6" fill="#fff" stroke="#9DBFE3"/>
+  <text x="486" y="552" font-size="12" fill="#1E4F8F" text-anchor="middle">Guest agent (vsock: ready, resize)</text>
+  <text x="486" y="590" font-size="10" fill="#7A93B3" text-anchor="middle">serial console ttyS0 to the browser</text>
+
+  <!-- Egress -->
+  <rect x="706" y="256" width="174" height="410" rx="10" fill="#fff" stroke="#ddd"/>
+  <text x="726" y="282" font-size="10" font-weight="600" fill="#999" letter-spacing="2">NETWORK</text>
+  <rect x="722" y="298" width="142" height="40" rx="6" fill="#F4F4F4" stroke="#ccc"/>
+  <text x="793" y="323" font-size="12" fill="#555" text-anchor="middle">TAP per VM</text>
+  <line x1="793" y1="338" x2="793" y2="356" stroke="#aaa" stroke-width="1.5"/>
+  <rect x="722" y="356" width="142" height="40" rx="6" fill="#F4F4F4" stroke="#ccc"/>
+  <text x="793" y="381" font-size="12" fill="#555" text-anchor="middle">Host bridge</text>
+  <line x1="793" y1="396" x2="793" y2="414" stroke="#aaa" stroke-width="1.5"/>
+  <rect x="722" y="414" width="142" height="56" rx="6" fill="#E1F2EF" stroke="#1F8A78"/>
+  <text x="793" y="438" font-size="12" fill="#136457" text-anchor="middle">nftables</text>
+  <text x="793" y="456" font-size="11" fill="#136457" text-anchor="middle">egress allowlist</text>
+  <text x="730" y="498" font-size="11" fill="#2D7426">✓ DNS</text>
+  <text x="730" y="518" font-size="11" fill="#2D7426">✓ AI API</text>
+  <text x="730" y="538" font-size="11" fill="#2D7426">✓ package mirrors</text>
+  <text x="730" y="566" font-size="11" fill="#A1263A">✕ VM to VM</text>
+  <text x="730" y="586" font-size="11" fill="#A1263A">✕ everything else,</text>
+  <text x="746" y="602" font-size="11" fill="#A1263A">logged and dropped</text>
+
+</svg>
